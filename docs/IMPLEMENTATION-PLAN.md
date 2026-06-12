@@ -34,7 +34,9 @@ Registered audit target (principal's wallet, positions on Arbitrum and Base): se
 
 ## Phase 4 — API, decision log, Modules 1 & 2
 
-API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (OpenAPI); `ClassifyVolRegime` (Module 1) and `EvaluateRange` (Module 2: fee APR expected vs IL expected + IV vs forecast RV → OPEN/DON'T OPEN). Every verdict appended to the decision log with full inputs + content hash.
+**First deliverable — `EstimateRangeApr` (`/ranges/estimate-apr`):** the "what APR would I get with this range?" calculation (kernel L from capital+range ÷ in-range competing liquidity from snapshots × volume × fee tier). Honest by construction: includes the user's own L in the denominator (self-dilution), reports both while-in-range APR and time-in-range-adjusted expectancy, and shows volume-window sensitivity (7d vs 30d) instead of a single seductive number. QA: cross-validate estimates against Metrix Finance for the same pools/ranges and document divergences. UI rule (FSD): the fee side is never displayed without the IL side; the standalone calc exists only as an API/CLI building block.
+
+Then the rest: API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (OpenAPI); `ClassifyVolRegime` (Module 1) and `EvaluateRange` (Module 2: fee APR expected vs IL expected + IV vs forecast RV → OPEN/DON'T OPEN). Every verdict appended to the decision log with full inputs + content hash.
 
 **DoD:** evaluating a range via API persists an immutable decision-log entry retrievable via `/decisions`; regime and verdict outputs covered by use-case tests; OpenAPI spec committed.
 
