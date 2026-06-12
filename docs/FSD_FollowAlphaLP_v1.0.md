@@ -91,6 +91,19 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 
 **Fluxos alternativos**: dados insuficientes (pool sem histórico mínimo) → sistema recusa veredito e diz o que falta (nunca chuta); banda incompatível com intenção (ex.: ACUMULAR com banda acima do preço) → erro de validação explicado.
 
+**Exemplo concreto (números ilustrativos)** — ETH a $3.000, pool ETH/USDC 0,3% na Base; usuário propõe banda $2.700–$3.300, $10.000, intenção COLHER:
+
+1. IV do pool (preço da vol que o pool paga): volume $32M/dia ÷ $2M de TVL na faixa ativa → **≈ 46% a.a.**
+2. Vol realizada prevista do ETH: **≈ 38% a.a.** → vendendo vol cara (46 > 38). Se fosse o inverso, NÃO ABRE independente do APR exibido pela UI do DEX.
+3. Fee APR do usuário na banda (capital ÷ liquidez concorrente na faixa × volume): **≈ 31% a.a. enquanto dentro**.
+4. Sobrevivência da banda ±10% no regime atual (taxa-base histórica, não previsão): **mediana 21 dias; 25% de chance de sair em 7 dias**.
+5. Custo esperado de saída: por baixo ≈ 1,5% do capital; por cima ≈ 1,4%.
+6. **Expectancy: fees medianas +1,8% vs custo de saída −1,4% → +0,4%/ciclo → ABRE**, com a margem fina exposta na tela.
+
+Veredito + inputs gravados no decision log (mesmo que o usuário não abra). Contraste com a decisão "no olho": o APR da UI do DEX é retrovisor, ignora IL e não condiciona ao regime — os três erros que este fluxo elimina.
+
+A mesma banda pode mudar de veredito com outra intenção: como ACUMULAR (single-sided $2.700–$2.850, só USDC), o benchmark vira a ordem limite seca, e "virar ETH na queda" deixa de ser IL — é a ordem executada com cashback de fees. Por isso a intenção é obrigatória antes do cálculo (RN-01).
+
 ### UC-04 — Simular canal (Módulo 3)
 
 1. Usuário define: pool, canal [A, B], capital, e o **protocolo de breakout completo** — máximo de reaberturas, nível de não-reabertura, teto de capital. Sem protocolo completo, o sistema recusa a simulação.
