@@ -69,17 +69,28 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 
 **Pós-condição**: relatório versionado; re-execução com mesmos inputs produz saída idêntica.
 
-### UC-02 — Consultar regime de volatilidade (Módulo 1)
+### UC-02 — Explorar ativo: momento do mercado (Módulo 1) — a porta de entrada
 
-1. Usuário seleciona um ativo (ex.: ETH, BTC, token do pool).
-2. Sistema responde: regime atual (`RANGE`/`TRENDING`/`TRANSITION`) + evidência (percentil de vol realizada, medida de trendiness, janelas usadas).
-3. Regra de exibição: a evidência numérica é sempre mostrada junto do rótulo — nunca só o rótulo.
+Navegação primária do produto (funil ativo-primeiro, decisão do principal em 2026-06-12): **Momento do ativo → Pools do ativo → Range/intent → Verdict**.
+
+1. Usuário vê a lista de tokens da watchlist (cards: regime atual + vol resumida) e clica num ativo (ex.: ETH).
+2. Sistema apresenta a **Asset View**: gráfico de preço com camadas úteis para LP —
+   - regime atual e histórico (`RANGE`/`TRENDING`/`TRANSITION`) com evidência numérica (percentis de vol realizada, trendiness, janelas usadas);
+   - vol realizada (7/30/90d) vs **IV média paga pelos pools do ativo** — o mercado está pagando caro ou barato pela vol deste ativo?;
+   - **range bands empíricas** desenhadas sobre o gráfico: faixas ±X% com a taxa-base de sobrevivência no regime atual ("±10% segurou mediana de 21 dias");
+   - níveis estruturais de referência (médias longas, topos/fundos relevantes);
+   - indicadores adicionais a definir, sob o critério de admissão da RN-13.
+3. Sistema indica **estruturas compatíveis com o momento** (nunca direção): ex. "regime TRENDING com vol expandindo → HARVEST two-sided é hostil; se a tese é querer o ativo mais barato, ACCUMULATE single-sided abaixo é a estrutura coerente".
+4. Interessado, o usuário avança para a **sessão de pools do ativo**: tabela comparativa (par, chain, fee tier, volume/TVL, IV de cada pool, liquidez concorrente por faixa, fee APR estimada).
+5. Do pool escolhido, segue para o avaliador de range (UC-03) com o contexto pré-carregado.
+
+Regra de exibição: a evidência numérica é sempre mostrada junto de qualquer rótulo — nunca só o rótulo.
 
 ### UC-03 — Avaliar uma range (Módulo 2 — o coração do produto)
 
 **Fluxo principal**:
 
-1. Usuário seleciona pool (da watchlist ou por endereço), define a range [Pa, Pb] e o capital, e **declara a intenção** (obrigatória).
+1. Usuário chega com ativo e pool pré-selecionados vindos do funil (UC-02 → pools do ativo) — ou seleciona um pool diretamente por endereço —, define a range [Pa, Pb] e o capital, e **declara a intenção** (obrigatória).
 2. Sistema computa e exibe:
    - IV do pool (quanto de vol o pool está pagando) vs previsão de vol realizada — o sinal caro/barato;
    - fee APR esperada na range (volume recente, liquidez concorrente na faixa, fee tier);
@@ -140,6 +151,7 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 | RN-10 | Matemática de liquidez validada contra o oráculo (fixtures dourados); fixtures nunca são editados à mão. |
 | RN-11 | Caixa/stables rendem 0% em qualquer cálculo comparativo (yield real é upside, nunca edge modelado). |
 | RN-12 | Expectativas exibidas ao usuário seguem o teto congelado da pesquisa (10-30% a.a. em LP); o sistema não exibe projeções acima disso. |
+| RN-13 | Indicadores na Asset View só são admitidos se servirem à decisão de LP (volatilidade, comportamento de range, liquidez). Indicadores direcionais clássicos (ex.: RSI) podem aparecer como contexto visual, mas nunca viram sinal de compra/venda nem recomendação de direção. |
 
 ---
 
@@ -150,21 +162,30 @@ Interface alvo: web (Next.js) consumindo a API; CLI cobre as Fases 1-3. Princíp
 ### Tela 1 — Dashboard
 Visão geral: posições atuais (valor, fees acumuladas, distância do preço às bordas da range), regimes dos ativos da watchlist, saúde do coletor, últimos vereditos.
 
-### Tela 2 — Auditoria (UC-01)
-Tabela por posição (intenção, fees, IL, vs benchmarks, resultado líquido) + agregado + a resposta destacada: "teve edge?". Exportável (JSON/MD).
+### Tela 2 — Watchlist & Asset View (UC-02) — a tela primária de navegação
+- Lista de tokens da watchlist (cards: regime atual + vol resumida).
+- Ao clicar num ativo: gráfico de preço com as camadas LP — regime na timeline, vol realizada (7/30/90d) vs IV média dos pools do ativo, range bands empíricas (taxa-base de sobrevivência desenhada sobre o gráfico), níveis estruturais — e o painel de **estruturas compatíveis com o momento** (contexto, nunca direção — RN-13).
+- CTA: "ver pools deste ativo".
 
-### Tela 3 — Avaliador de Range (UC-03) — a tela principal
+### Tela 3 — Pools do ativo (UC-02, passo 4)
+Tabela comparativa dos pools do ativo selecionado: par, chain, fee tier, volume/TVL, IV do pool, liquidez concorrente por faixa, fee APR estimada. Ordenável. CTA por linha: "avaliar range neste pool".
+
+### Tela 4 — Avaliador de Range (UC-03) — onde a decisão é selada
+- Chega pré-carregada com o contexto do funil (ativo, pool); aceita também entrada direta.
 - Esquerda: inputs (pool, range com seletor visual sobre o gráfico de preço + distribuição de liquidez concorrente, capital, intenção).
 - Direita: o veredito **OPEN / DON'T OPEN** em destaque, e logo abaixo, sempre visíveis, os números que o produziram: IV vs vol prevista, fee APR esperada, sobrevivência da range (mediana/quartis), IL por cenário, expectancy líquida.
 - Rodapé: "este veredito foi registrado" + link para a entrada no decision log.
 
-### Tela 4 — Simulador de Canal (UC-04)
+### Tela 5 — Simulador de Canal (UC-04)
 Gráfico de preço com o canal desenhado e os eventos marcados (aberturas, conversões, breakouts); curva de P&L completa; formulário do protocolo de breakout com campos obrigatórios (a simulação não roda sem eles).
 
-### Tela 5 — Decision Log (UC-05)
+### Tela 6 — Auditoria (UC-01)
+Tabela por posição (intenção, fees, IL, vs benchmarks, resultado líquido) + agregado + a resposta destacada: "teve edge?". Exportável (JSON/MD).
+
+### Tela 7 — Decision Log (UC-05)
 Lista filtrável; entrada expandida mostra inputs completos e hash. Imutável por construção — sem botões de editar/apagar.
 
-### Tela 6 — Configurações
+### Tela 8 — Configurações
 Carteiras, watchlist, intents pendentes de declaração, status de coleta. Sem campos de chave privada — por desenho, não por esquecimento.
 
 ---
