@@ -8,6 +8,7 @@ Instructions for any coding agent (Codex or other) working in this repository. T
 2. `docs/ARCHITECTURE.md` — the architecture contract: solution layout, dependency rules, layer responsibilities.
 3. `docs/IMPLEMENTATION-PLAN.md` — phases with definition of done. Work strictly in phase order.
 4. `docs/FSD_FollowAlphaLP_v1.1.md` — approved functional spec: use cases, business rules (RN-01..13), screens. Authoritative for API/frontend behavior.
+5. `docs/TECH-STACK.md` — pinned libraries, data sources and chart stack for the analysis layer. Do not introduce dependencies outside it without updating it first.
 
 ## Hard rules
 
