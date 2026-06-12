@@ -34,7 +34,7 @@ Registered audit target (principal's wallet, positions on Arbitrum and Base): se
 
 ## Phase 4 — API, decision log, Modules 1 & 2
 
-API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (OpenAPI); `ClassifyVolRegime` (Module 1) and `EvaluateRange` (Module 2: fee APR expected vs IL expected + IV vs forecast RV → ABRE/NÃO ABRE). Every verdict appended to the decision log with full inputs + content hash.
+API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (OpenAPI); `ClassifyVolRegime` (Module 1) and `EvaluateRange` (Module 2: fee APR expected vs IL expected + IV vs forecast RV → OPEN/DON'T OPEN). Every verdict appended to the decision log with full inputs + content hash.
 
 **DoD:** evaluating a range via API persists an immutable decision-log entry retrievable via `/decisions`; regime and verdict outputs covered by use-case tests; OpenAPI spec committed.
 
@@ -42,7 +42,7 @@ API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (O
 
 Next.js frontend (audit dashboard, regime panel, range evaluator screen, decision-log review) consuming the generated OpenAPI client; `ChannelSimulator` exposed via `/channels/simulate` with mandatory `ChannelPolicy` (max reopens, no-reopen floor, capital cap) — the API rejects simulations without a complete breakout protocol.
 
-**DoD:** principal can run an audit, read a regime, get an ABRE/NÃO ABRE verdict and simulate a channel entirely from the browser; channel results always display the full series including breakouts (never a filtered "good stretch").
+**DoD:** principal can run an audit, read a regime, get an OPEN/DON'T OPEN verdict and simulate a channel entirely from the browser; channel results always display the full series including breakouts (never a filtered "good stretch").
 
 ## Backlog (post-Phase 5, unscheduled)
 

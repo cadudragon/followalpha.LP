@@ -4,7 +4,7 @@ Authored 2026-06-12 by the project architect. This is a binding contract for imp
 
 ## 1. What this system is
 
-A decision-support tool for concentrated-liquidity LPing (Program 3 charter, see `LP-KNOWLEDGE.md`): it audits past LP positions, classifies volatility regimes, prices ranges (fees expected vs IL expected, pool-implied vol vs forecast vol) and renders auditable **ABRE / NÃO ABRE** verdicts, and simulates channel strategies with mandatory breakout protocols. It **recommends; the human executes**. Read-only on-chain.
+A decision-support tool for concentrated-liquidity LPing (Program 3 charter, see `LP-KNOWLEDGE.md`): it audits past LP positions, classifies volatility regimes, prices ranges (fees expected vs IL expected, pool-implied vol vs forecast vol) and renders auditable **OPEN / DON'T OPEN** verdicts, and simulates channel strategies with mandatory breakout protocols. It **recommends; the human executes**. Read-only on-chain.
 
 Operational profile: single user today; potentially SaaS later. Always-on deployment (VPS) because tick-level liquidity distributions cannot be reconstructed retroactively — the collector snapshots them continuously from day 1.
 
@@ -53,7 +53,7 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 
 ### 4.3 Position model & valuation
 - `RangePosition` (pool, range, L, opened-at), `PositionValuation` (x, y, value at price P), `HodlBenchmark`, `FiftyFiftyBenchmark`, `LimitOrderBenchmark` (scaled limit order without fees).
-- `Intent` = `Acumular | Distribuir | Colher` with its benchmark mapping (see `LP-KNOWLEDGE.md` §3). Reclassification is impossible by construction: intent is set at creation, no setter.
+- `Intent` = `Accumulate | Distribute | Harvest` with its benchmark mapping (see `LP-KNOWLEDGE.md` §3). Reclassification is impossible by construction: intent is set at creation, no setter.
 - IL / LVR-style computations: position value vs each benchmark over a price path or at a point.
 
 ### 4.4 Pricing & signals (pure functions; data arrives as inputs)
@@ -61,7 +61,7 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 - `RealizedVolEstimator`, `TrendinessEstimator` (path-efficiency / ADX-like) — pure given a price series.
 - `BandSurvivalEstimator`: empirical time-to-exit distribution of a band of width W given a historical series (pure given the series).
 - `FeeShareEstimator`: expected fee APR given band, own L, in-range liquidity distribution, recent volume.
-- `RangeVerdictCalculator`: combines the above into `Verdict { Abre | NaoAbre }` + full input snapshot (for the decision log).
+- `RangeVerdictCalculator`: combines the above into `Verdict { Open | DoNotOpen }` + full input snapshot (for the decision log).
 - `ChannelSimulator`: given `ChannelPolicy` (range, reopen rules, max reopens, no-reopen floor, capital cap) and a price/fee series → full event/PnL series **including breakouts**.
 
 ## 5. Application
@@ -69,7 +69,7 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 Use cases (one class per operation, CQRS-lite, no MediatR needed):
 
 - Module 0: `AuditWalletPositions` (wallet → per-position audit: fees collected vs IL vs HODL vs intent benchmark, costs included).
-- Module 1: `ClassifyVolRegime` (asset → RANGE/TENDENCIA/TRANSICAO + evidence).
+- Module 1: `ClassifyVolRegime` (asset → RANGE/TRENDING/TRANSITION + evidence).
 - Module 2: `EvaluateRange` (pool, band, intent → verdict, persisted to decision log).
 - Module 3: `SimulateChannel`, `EvaluateChannelPolicy`.
 - Ingestion: `SnapshotPool`, `IngestPositionEvents`, `IngestPriceSeries` (called by Collector).
@@ -96,7 +96,7 @@ Ports (interfaces owned by Application):
 - **Collector** (Worker Service, runs on the VPS): scheduled jobs — pool snapshots (state, day volume, tick liquidity distribution) for a configured watchlist, price series refresh, wallet event sync. Idempotent; health endpoint; structured logs (Serilog). Missing a run is recoverable for events/prices, NOT for tick distributions — hence always-on.
 - **Api** (ASP.NET Core minimal APIs): REST + OpenAPI. Endpoints mirror use cases (`/audit`, `/regime`, `/ranges/evaluate`, `/channels/simulate`, `/decisions`). Auth: API-key middleware seam (single key today; real identity later). CORS for the frontend origin.
 - **Cli**: thin wrapper over the same use cases for Phase 1-3 operation and ops tasks (run audit, trigger snapshot, export decision log).
-- **frontend/** (Next.js + TypeScript): dashboards — audit report, regime panel, range evaluator (the ABRE/NÃO ABRE screen with its inputs), channel simulator, decision-log review. Consumes the OpenAPI-generated client. Charts: lightweight-charts or recharts. **No business logic client-side** — the API is the single source of verdicts.
+- **frontend/** (Next.js + TypeScript): dashboards — audit report, regime panel, range evaluator (the OPEN/DON'T OPEN screen with its inputs), channel simulator, decision-log review. Consumes the OpenAPI-generated client. Charts: lightweight-charts or recharts. **No business logic client-side** — the API is the single source of verdicts.
 
 ## 8. Cross-cutting rules
 

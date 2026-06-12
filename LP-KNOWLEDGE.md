@@ -33,20 +33,20 @@ A descoberta conceitual mais importante da fase de desenho. **O impermanent loss
 
 | Intenção | Estrutura | Benchmark honesto | Sucesso significa |
 |---|---|---|---|
-| **ACUMULAR** | range single-sided **abaixo** do preço | ordem limite de compra escalonada (sem fees) | comprou o ativo desejado mais barato que a ordem seca, + fees |
-| **DISTRIBUIR** | range single-sided **acima** do preço | ordem limite de venda escalonada (sem fees) | vendeu mais caro que a ordem seca, + fees |
-| **COLHER** | range two-sided em torno do preço | HODL dos tokens e HODL 50/50 | fees > IL no horizonte realizado |
+| **ACCUMULATE** | range single-sided **abaixo** do preço | ordem limite de compra escalonada (sem fees) | comprou o ativo desejado mais barato que a ordem seca, + fees |
+| **DISTRIBUTE** | range single-sided **acima** do preço | ordem limite de venda escalonada (sem fees) | vendeu mais caro que a ordem seca, + fees |
+| **HARVEST** | range two-sided em torno do preço | HODL dos tokens e HODL 50/50 | fees > IL no horizonte realizado |
 
 Insight central: uma range single-sided abaixo do preço É uma **ordem limite que paga** — a ordem limite tradicional espera de graça; a range é remunerada em fees enquanto espera. Se a intenção era acumular BTC na queda, acabar cheio de BTC não é IL: é a ordem executada, com cashback.
 
-**Regra dura: proibido reclassificar a intenção depois de aberta.** "Era COLHER mas virou ACUMULAR porque caiu" é a fonte nº 1 de autoengano em LP, e este projeto existe para matá-la.
+**Regra dura: proibido reclassificar a intenção depois de aberta.** "Era HARVEST mas virou ACCUMULATE porque caiu" é a fonte nº 1 de autoengano em LP, e este projeto existe para matá-la.
 
 ## 4. O rascunho original do principal e as correções aplicadas
 
 O principal pediu uma ferramenta de decisão com 4 capacidades. Parecer do quant analyst, item a item:
 
-1. **"Diga como está o mercado: Bear/Bull/Lateral"** → CORRIGIDO para regime de **volatilidade** (RANGE / TENDÊNCIA / TRANSIÇÃO). Direção é imprevisível (falseado); vol é tratável. Bull/bear entra apenas como contexto manual da intenção, nunca como previsão automática.
-2. **"Leia gráficos e diga se fica num range por X meses"** → CORRIGIDO para **taxas-base empíricas**: ninguém prevê permanência; o que se computa é a distribuição histórica de tempo-até-sair de uma banda de largura W, condicionada ao regime de vol. Saída tipo: "banda de ±15% em ETH, neste regime: mediana 23 dias dentro, 25% de chance de sair em 1 semana".
+1. **"Diga como está o mercado: Bear/Bull/Lateral"** → CORRIGIDO para regime de **volatilidade** (RANGE / TRENDING / TRANSITION). Direção é imprevisível (falseado); vol é tratável. Bull/bear entra apenas como contexto manual da intenção, nunca como previsão automática.
+2. **"Leia gráficos e diga se fica num range por X meses"** → CORRIGIDO para **taxas-base empíricas**: ninguém prevê permanência; o que se computa é a distribuição histórica de tempo-até-sair de uma range de largura W, condicionada ao regime de vol. Saída tipo: "range de ±15% em ETH, neste regime: mediana 23 dias dentro, 25% de chance de sair em 1 semana".
 3. **"Range com intenção: em baixa, acumular BTC ganhando fees em vez de comprar one-shot"** → ACEITO INTEGRALMENTE; promovido a princípio mestre (Seção 3). A melhor ideia do rascunho.
 4. **"Canal: abre na base, fecha quando converte em dólar no topo, repete — máquina de dinheiro"** → ACEITO COM MANUAL DE SEGURANÇA OBRIGATÓRIO. Funciona enquanto o ativo oscila no canal; o breakout para baixo é o modo de morte (reabriu, preço atravessou o fundo, comprou a queda inteira). É short-vol declarado: o protocolo de breakout (Seção 5, Módulo 3) não é opcional.
 
@@ -58,16 +58,16 @@ Auditoria do histórico real do principal: para cada posição já operada — f
 
 ### Módulo 1 — Regime de volatilidade
 
-Por ativo: classificação RANGE / TENDÊNCIA / TRANSIÇÃO via vol realizada (percentil 30d vs histórico) e trendiness (eficiência de caminho / ADX-like). Simples, testável, alimenta o Módulo 2.
+Por ativo: classificação RANGE / TRENDING / TRANSITION via vol realizada (percentil 30d vs histórico) e trendiness (eficiência de caminho / ADX-like). Simples, testável, alimenta o Módulo 2.
 
 ### Módulo 2 — Range Intelligence (o coração)
 
-Para banda de largura W em torno do preço, condicionada ao regime:
+Para range de largura W em torno do preço, condicionada ao regime:
 
-- distribuição empírica de tempo-até-sair (curvas de sobrevivência da banda);
-- fee APR esperada dentro da banda (volume do pool, TVL concentrado na faixa, fee tier);
+- distribuição empírica de tempo-até-sair (curvas de sobrevivência da range);
+- fee APR esperada dentro da range (volume do pool, TVL concentrado na faixa, fee tier);
 - IL esperado nos cenários de saída (por cima / por baixo);
-- **veredito: ABRE / NÃO ABRE**, com expectancy líquida = fees esperadas no horizonte provável − custo esperado de saída.
+- **veredito: OPEN / DON'T OPEN**, com expectancy líquida = fees esperadas no horizonte provável − custo esperado de saída.
 
 Proibido: saída do tipo "fica neste range por X meses".
 
@@ -103,7 +103,7 @@ Repositório local `C:\Users\carlos.bezerra\Documents\Workspace\uniswap-v3-liqui
 
 - `uniswap-v3-liquidity-math.py` — kernel da matemática de liquidez concentrada (L de amounts+range, recomposição exata delta_x/delta_y, bounds). Alimenta os Módulos 0, 2 e 3 (é o simulador do canal). Portar com testes unitários contra os casos conhecidos do próprio arquivo.
 - `subgraph-liquidity-range-example.py` / `-positions-` — distribuição de liquidez por tick e posições ativas: base do cálculo de fee share (tua fatia = teu L / L total na faixa) e da análise de ranges lotados.
-- `subgraph-implied-volatility-example.py` — **a joia**: `IV = 2·fee·sqrt(volume/tickTVL)·sqrt(365)` — quanto de vol o pool está pagando. Upgrade do Módulo 2: o veredito ABRE/NÃO ABRE vira comparação IV do pool vs previsão de vol realizada (vender vol caro = abre; barato = não abre, qualquer que seja o APR anunciado). Backbone teórico: LP ≈ short straddle, fees ≈ prêmio da opção.
+- `subgraph-implied-volatility-example.py` — **a joia**: `IV = 2·fee·sqrt(volume/tickTVL)·sqrt(365)` — quanto de vol o pool está pagando. Upgrade do Módulo 2: o veredito OPEN/DON'T OPEN vira comparação IV do pool vs previsão de vol realizada (vender vol caro = abre; barato = não abre, qualquer que seja o APR anunciado). Backbone teórico: LP ≈ short straddle, fees ≈ prêmio da opção.
 
 Ressalvas registradas: endpoint do hosted service do The Graph foi descontinuado (migrar para o gateway com API key ou Dune); float por simplicidade (analytics ok; audit reconcilia com eventos `collect` on-chain); sem licença visível (uso interno ok; redistribuição → reimplementar).
 
@@ -124,7 +124,7 @@ Ressalvas registradas: endpoint do hosted service do The Graph foi descontinuado
 
 1. **Módulo 0 — LP-Audit** ← começa aqui; bloqueado aguardando endereços de carteira do principal.
 2. Módulo 1 — regime de vol.
-3. Módulo 2 — range intelligence (ABRE/NÃO ABRE).
+3. Módulo 2 — range intelligence (OPEN/DON'T OPEN).
 4. Módulo 3 — channel machine.
 
 ## 10. Glossário mínimo

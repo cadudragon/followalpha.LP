@@ -1,6 +1,6 @@
 # CLAUDE.md — FollowAlpha.LP
 
-Decision-support tool for concentrated-liquidity LPing (.NET 10 backend + Next.js frontend). It audits LP positions, classifies volatility regimes, prices ranges (ABRE/NÃO ABRE verdicts) and simulates channel strategies. **It recommends; the human executes. Read-only on-chain — no signing code, ever.**
+Decision-support tool for concentrated-liquidity LPing (.NET 10 backend + Next.js frontend). It audits LP positions, classifies volatility regimes, prices ranges (OPEN / DON'T OPEN verdicts) and simulates channel strategies. **It recommends; the human executes. Read-only on-chain — no signing code, ever.**
 
 ## Read first
 

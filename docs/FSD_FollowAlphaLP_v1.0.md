@@ -22,7 +22,7 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 
 1. **"Meu histórico de LP teve edge?"** (Auditoria)
 2. **"Este ativo está em modo amigável para LP agora?"** (Regime de volatilidade)
-3. **"Vale a pena abrir ESTA range NESTE pool com ESTA intenção?"** (Veredito ABRE/NÃO ABRE)
+3. **"Vale a pena abrir ESTA range NESTE pool com ESTA intenção?"** (Veredito OPEN/DON'T OPEN)
 4. **"Esta estratégia de canal sobrevive, incluindo os breakouts?"** (Simulador de canal)
 
 ### 1.2 O que o sistema NÃO é (fora de escopo, por decisão)
@@ -45,12 +45,12 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 
 - **Posição**: uma range de liquidez [Pa, Pb] num pool, com liquidez L, aberta numa data.
 - **Intenção** (obrigatória, imutável após criação):
-  - `ACUMULAR` — range single-sided abaixo do preço; equivale a ordem limite de compra escalonada que paga fees.
-  - `DISTRIBUIR` — range single-sided acima do preço; ordem limite de venda que paga fees.
-  - `COLHER` — range two-sided; negócio de fees vs IL.
+  - `ACCUMULATE` — range single-sided abaixo do preço; equivale a ordem limite de compra escalonada que paga fees.
+  - `DISTRIBUTE` — range single-sided acima do preço; ordem limite de venda que paga fees.
+  - `HARVEST` — range two-sided; negócio de fees vs IL.
 - **Benchmark da intenção**: a alternativa honesta contra a qual a posição é julgada (ordem limite seca / HODL / 50-50).
-- **Veredito**: `ABRE` ou `NÃO ABRE`, sempre acompanhado dos inputs completos que o produziram.
-- **Regime**: `RANGE` / `TENDÊNCIA` / `TRANSIÇÃO` (volatilidade, nunca direção).
+- **Veredito**: `OPEN` ou `DON'T OPEN`, sempre acompanhado dos inputs completos que o produziram.
+- **Regime**: `RANGE` / `TRENDING` / `TRANSITION` (volatilidade, nunca direção).
 - **Canal**: política de abrir/fechar/reabrir uma range entre dois níveis, com protocolo de breakout obrigatório.
 - **Watchlist**: pools monitorados continuamente pelo coletor.
 
@@ -63,7 +63,7 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 **Ator**: principal. **Pré-condição**: carteira registrada (`config/wallets.json`); eventos on-chain sincronizados.
 
 1. Sistema enumera todas as posições históricas e atuais da carteira (eventos mint/burn/collect) em Arbitrum e Base.
-2. Usuário declara a intenção de cada posição (uma vez; arquivo/tela de intents). Posições sem intenção declarada são auditadas como `COLHER` com flag "intenção não declarada".
+2. Usuário declara a intenção de cada posição (uma vez; arquivo/tela de intents). Posições sem intenção declarada são auditadas como `HARVEST` com flag "intenção não declarada".
 3. Sistema calcula, por posição: fees coletadas (reconciliadas com eventos `collect`), IL realizado, custos de gas, resultado vs HODL, vs 50-50, vs benchmark da intenção.
 4. Sistema produz relatório determinístico (JSON + markdown legível): por posição + agregado, com a resposta "teve edge? onde? por quê?".
 
@@ -72,37 +72,37 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 ### UC-02 — Consultar regime de volatilidade (Módulo 1)
 
 1. Usuário seleciona um ativo (ex.: ETH, BTC, token do pool).
-2. Sistema responde: regime atual (`RANGE`/`TENDÊNCIA`/`TRANSIÇÃO`) + evidência (percentil de vol realizada, medida de trendiness, janelas usadas).
+2. Sistema responde: regime atual (`RANGE`/`TRENDING`/`TRANSITION`) + evidência (percentil de vol realizada, medida de trendiness, janelas usadas).
 3. Regra de exibição: a evidência numérica é sempre mostrada junto do rótulo — nunca só o rótulo.
 
 ### UC-03 — Avaliar uma range (Módulo 2 — o coração do produto)
 
 **Fluxo principal**:
 
-1. Usuário seleciona pool (da watchlist ou por endereço), define a banda [Pa, Pb] e o capital, e **declara a intenção** (obrigatória).
+1. Usuário seleciona pool (da watchlist ou por endereço), define a range [Pa, Pb] e o capital, e **declara a intenção** (obrigatória).
 2. Sistema computa e exibe:
    - IV do pool (quanto de vol o pool está pagando) vs previsão de vol realizada — o sinal caro/barato;
-   - fee APR esperada na banda (volume recente, liquidez concorrente na faixa, fee tier);
-   - distribuição empírica de tempo-até-sair da banda no regime atual (mediana, quartis);
+   - fee APR esperada na range (volume recente, liquidez concorrente na faixa, fee tier);
+   - distribuição empírica de tempo-até-sair da range no regime atual (mediana, quartis);
    - IL esperado nos cenários de saída (por cima / por baixo), traduzido pela intenção;
-   - **expectancy líquida e o veredito: ABRE / NÃO ABRE**.
+   - **expectancy líquida e o veredito: OPEN / DON'T OPEN**.
 3. Sistema grava o veredito + todos os inputs + hash no decision log (sempre, mesmo se o usuário não abrir a posição).
 4. Usuário decide e executa fora do sistema, se quiser.
 
-**Fluxos alternativos**: dados insuficientes (pool sem histórico mínimo) → sistema recusa veredito e diz o que falta (nunca chuta); banda incompatível com intenção (ex.: ACUMULAR com banda acima do preço) → erro de validação explicado.
+**Fluxos alternativos**: dados insuficientes (pool sem histórico mínimo) → sistema recusa veredito e diz o que falta (nunca chuta); range incompatível com intenção (ex.: ACCUMULATE com range acima do preço) → erro de validação explicado.
 
-**Exemplo concreto (números ilustrativos)** — ETH a $3.000, pool ETH/USDC 0,3% na Base; usuário propõe banda $2.700–$3.300, $10.000, intenção COLHER:
+**Exemplo concreto (números ilustrativos)** — ETH a $3.000, pool ETH/USDC 0,3% na Base; usuário propõe range $2.700–$3.300, $10.000, intenção HARVEST:
 
 1. IV do pool (preço da vol que o pool paga): volume $32M/dia ÷ $2M de TVL na faixa ativa → **≈ 46% a.a.**
-2. Vol realizada prevista do ETH: **≈ 38% a.a.** → vendendo vol cara (46 > 38). Se fosse o inverso, NÃO ABRE independente do APR exibido pela UI do DEX.
-3. Fee APR do usuário na banda (capital ÷ liquidez concorrente na faixa × volume): **≈ 31% a.a. enquanto dentro**.
-4. Sobrevivência da banda ±10% no regime atual (taxa-base histórica, não previsão): **mediana 21 dias; 25% de chance de sair em 7 dias**.
+2. Vol realizada prevista do ETH: **≈ 38% a.a.** → vendendo vol cara (46 > 38). Se fosse o inverso, DON'T OPEN independente do APR exibido pela UI do DEX.
+3. Fee APR do usuário na range (capital ÷ liquidez concorrente na faixa × volume): **≈ 31% a.a. enquanto dentro**.
+4. Sobrevivência da range ±10% no regime atual (taxa-base histórica, não previsão): **mediana 21 dias; 25% de chance de sair em 7 dias**.
 5. Custo esperado de saída: por baixo ≈ 1,5% do capital; por cima ≈ 1,4%.
-6. **Expectancy: fees medianas +1,8% vs custo de saída −1,4% → +0,4%/ciclo → ABRE**, com a margem fina exposta na tela.
+6. **Expectancy: fees medianas +1,8% vs custo de saída −1,4% → +0,4%/ciclo → OPEN**, com a margem fina exposta na tela.
 
 Veredito + inputs gravados no decision log (mesmo que o usuário não abra). Contraste com a decisão "no olho": o APR da UI do DEX é retrovisor, ignora IL e não condiciona ao regime — os três erros que este fluxo elimina.
 
-A mesma banda pode mudar de veredito com outra intenção: como ACUMULAR (single-sided $2.700–$2.850, só USDC), o benchmark vira a ordem limite seca, e "virar ETH na queda" deixa de ser IL — é a ordem executada com cashback de fees. Por isso a intenção é obrigatória antes do cálculo (RN-01).
+A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (single-sided $2.700–$2.850, só USDC), o benchmark vira a ordem limite seca, e "virar ETH na queda" deixa de ser IL — é a ordem executada com cashback de fees. Por isso a intenção é obrigatória antes do cálculo (RN-01).
 
 ### UC-04 — Simular canal (Módulo 3)
 
@@ -134,7 +134,7 @@ A mesma banda pode mudar de veredito com outra intenção: como ACUMULAR (single
 | RN-04 | Simulação de canal exige protocolo de breakout completo; resultado oficial é sempre a série completa com breakouts. |
 | RN-05 | O sistema não contém código de assinatura/execução de transações nem armazena chaves privadas. |
 | RN-06 | Fees no audit são reconciliadas com eventos `collect` on-chain; divergências com o cálculo teórico são exibidas, não escondidas. |
-| RN-07 | Output de regime é exclusivamente de volatilidade (RANGE/TENDÊNCIA/TRANSIÇÃO); o sistema nunca emite previsão de direção. |
+| RN-07 | Output de regime é exclusivamente de volatilidade (RANGE/TRENDING/TRANSITION); o sistema nunca emite previsão de direção. |
 | RN-08 | Todo número exibido é rastreável aos seus inputs (auditabilidade ponta a ponta). |
 | RN-09 | Dados on-chain coletados são fatos imutáveis (append-only); re-ingestão é idempotente. |
 | RN-10 | Matemática de liquidez validada contra o oráculo (fixtures dourados); fixtures nunca são editados à mão. |
@@ -154,8 +154,8 @@ Visão geral: posições atuais (valor, fees acumuladas, distância do preço à
 Tabela por posição (intenção, fees, IL, vs benchmarks, resultado líquido) + agregado + a resposta destacada: "teve edge?". Exportável (JSON/MD).
 
 ### Tela 3 — Avaliador de Range (UC-03) — a tela principal
-- Esquerda: inputs (pool, banda com seletor visual sobre o gráfico de preço + distribuição de liquidez concorrente, capital, intenção).
-- Direita: o veredito **ABRE / NÃO ABRE** em destaque, e logo abaixo, sempre visíveis, os números que o produziram: IV vs vol prevista, fee APR esperada, sobrevivência da banda (mediana/quartis), IL por cenário, expectancy líquida.
+- Esquerda: inputs (pool, range com seletor visual sobre o gráfico de preço + distribuição de liquidez concorrente, capital, intenção).
+- Direita: o veredito **OPEN / DON'T OPEN** em destaque, e logo abaixo, sempre visíveis, os números que o produziram: IV vs vol prevista, fee APR esperada, sobrevivência da range (mediana/quartis), IL por cenário, expectancy líquida.
 - Rodapé: "este veredito foi registrado" + link para a entrada no decision log.
 
 ### Tela 4 — Simulador de Canal (UC-04)
@@ -174,7 +174,7 @@ Carteiras, watchlist, intents pendentes de declaração, status de coleta. Sem c
 - Determinismo: mesmas entradas → mesmas saídas, em qualquer relatório ou veredito.
 - Disponibilidade do coletor: 24/7 (dado de tick não coletado é irrecuperável).
 - Latência de veredito: segundos, não milissegundos (decisão humana, não HFT).
-- Idioma da UI: português (pt-BR). Código e documentos técnicos: inglês.
+- Idioma: prosa da UI e dos documentos funcionais em português (pt-BR), mas **vocabulário de domínio sempre em inglês** — range, fees, IL, breakout, single-sided, watchlist; intents `ACCUMULATE`/`DISTRIBUTE`/`HARVEST`; verdict `OPEN`/`DON'T OPEN`; regimes `RANGE`/`TRENDING`/`TRANSITION` (preferência do principal, 2026-06-12). Código e documentos técnicos: inglês.
 - Privacidade: dados ficam na infraestrutura do principal; nenhum dado enviado a terceiros além das queries públicas (The Graph, RPC).
 
 ---
