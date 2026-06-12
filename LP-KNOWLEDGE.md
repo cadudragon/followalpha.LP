@@ -39,7 +39,7 @@ A descoberta conceitual mais importante da fase de desenho. **O impermanent loss
 
 Insight central: uma range single-sided abaixo do preço É uma **ordem limite que paga** — a ordem limite tradicional espera de graça; a range é remunerada em fees enquanto espera. Se a intenção era acumular BTC na queda, acabar cheio de BTC não é IL: é a ordem executada, com cashback.
 
-**Regra dura: proibido reclassificar a intenção depois de aberta.** "Era HARVEST mas virou ACCUMULATE porque caiu" é a fonte nº 1 de autoengano em LP, e este projeto existe para matá-la.
+**Regra (atualizada por decisão do principal, 2026-06-12): reclassificar a intenção é permitido somente com trilha completa.** A intenção original fica registrada para sempre (append-only), a reclassificação carrega data e justificativa, o P&L passa a ser exibido contra os benchmarks de **ambas** as intenções, e a posição é sinalizada em todos os relatórios. O autoengano ("era HARVEST mas virou ACCUMULATE porque caiu") não é morto pela proibição, mas pela memória: o sistema nunca esquece a história original — tu podes mudar de tese; o registro não muda contigo.
 
 ## 4. O rascunho original do principal e as correções aplicadas
 

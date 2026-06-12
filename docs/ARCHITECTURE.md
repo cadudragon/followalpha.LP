@@ -53,7 +53,7 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 
 ### 4.3 Position model & valuation
 - `RangePosition` (pool, range, L, opened-at), `PositionValuation` (x, y, value at price P), `HodlBenchmark`, `FiftyFiftyBenchmark`, `LimitOrderBenchmark` (scaled limit order without fees).
-- `Intent` = `Accumulate | Distribute | Harvest` with its benchmark mapping (see `LP-KNOWLEDGE.md` §3). Reclassification is impossible by construction: intent is set at creation, no setter.
+- `Intent` = `Accumulate | Distribute | Harvest` with its benchmark mapping (see `LP-KNOWLEDGE.md` §3). Intent records are immutable; reclassification **appends** a new intent record (dated, with reason) — the original is preserved, valuations after reclassification are computed against both intents' benchmarks, and the position is flagged in all reports.
 - IL / LVR-style computations: position value vs each benchmark over a price path or at a point.
 
 ### 4.4 Pricing & signals (pure functions; data arrives as inputs)
@@ -82,7 +82,10 @@ Ports (interfaces owned by Application):
 - `IDexProtocolRegistry` — descriptors for Uniswap v3 and forks per chain (subgraph id, NFT manager address, fee tiers). Adding a DEX/chain = adding a descriptor + (if needed) an adapter, nothing else changes.
 - `ISnapshotStore`, `IPositionStore`, `IPriceStore` — persistence (append-only semantics for facts).
 - `IDecisionLog` — append-only verdict log: every `EvaluateRange`/channel decision with full inputs + content hash. **This log is the product's own forward-test** — six months of logged verdicts tell us whether the tool has edge.
+- `INotificationChannel` — alert delivery for UC-07 (mechanism configurable: Telegram/e-mail/push; implemented in Phase 6).
 - `IClock`.
+
+Monitoring use cases (UC-07/UC-08, FSD v1.1): `EvaluateAlertRules` (Collector-driven) and `MonitorOpenPositions` (fees vs IL race, verdict-premise drift flags — informational only, never an execution path).
 
 ## 6. Infrastructure
 

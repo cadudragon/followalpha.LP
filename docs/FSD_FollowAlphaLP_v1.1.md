@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Sistema | FollowAlpha.LP |
-| Versão | 1.0 (rascunho para alinhamento principal ↔ arquiteto) |
+| Versão | 1.1 (aprovada pelo principal em 2026-06-12, com modificações de alinhamento) |
 | Data | 2026-06-12 |
 | Autor | Arquiteto/Analista (Claude), para validação do principal (Carlos) |
 | Documentos relacionados | `LP-KNOWLEDGE.md` (domínio), `docs/ARCHITECTURE.md` (técnico), `docs/IMPLEMENTATION-PLAN.md` (fases) |
@@ -44,7 +44,7 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 ## 2. Conceitos e vocabulário funcional
 
 - **Posição**: uma range de liquidez [Pa, Pb] num pool, com liquidez L, aberta numa data.
-- **Intenção** (obrigatória, imutável após criação):
+- **Intenção** (obrigatória na criação; reclassificável apenas com trilha completa — RN-01):
   - `ACCUMULATE` — range single-sided abaixo do preço; equivale a ordem limite de compra escalonada que paga fees.
   - `DISTRIBUTE` — range single-sided acima do preço; ordem limite de venda que paga fees.
   - `HARVEST` — range two-sided; negócio de fees vs IL.
@@ -133,15 +133,27 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 2. Coletor (24/7 no VPS) snapshota: estado do pool, volume diário, distribuição de liquidez por tick; sincroniza eventos das carteiras; atualiza séries de preço.
 3. Tela/comando de saúde: última coleta por pool, lacunas, falhas.
 
+### UC-07 — Alertas (adicionado pelo principal, 2026-06-12)
+
+1. Usuário define regras de alerta: preço aproximando-se da borda de uma range aberta (distância configurável), mudança de regime de um ativo da watchlist, IV de um pool da watchlist cruzando um limiar definido.
+2. O Collector avalia as regras a cada ciclo e dispara notificações pelo canal configurado (mecanismo a definir na implementação: Telegram, e-mail ou push).
+3. Alertas **informam**; nunca executam nada (RN-05) e nunca recomendam direção (RN-07/RN-13).
+
+### UC-08 — Monitor pós-OPEN (adicionado pelo principal, 2026-06-12)
+
+1. Para cada posição aberta, o sistema acompanha: fees acumuladas vs IL acumulado (a corrida que decide o resultado), distância do preço às bordas da range, e os inputs do veredito original (IV, regime, sobrevivência) recalculados com dados atuais.
+2. Quando o quadro atual diverge materialmente do quadro do veredito (ex.: regime mudou, IV caiu abaixo da vol prevista), a posição é sinalizada: **"as premissas do OPEN mudaram"** — com o quê mudou, lado a lado.
+3. A sinalização é informativa — fechar/manter é decisão do usuário; se tomada, pode ser registrada como anotação datada no decision log (RN-03).
+
 ---
 
 ## 4. Regras de Negócio
 
 | # | Regra |
 |---|---|
-| RN-01 | Intenção é obrigatória na criação de posição/avaliação e **imutável** depois. Reclassificação retroativa não existe no sistema. |
+| RN-01 | Intenção é obrigatória na criação. Reclassificação posterior é permitida **somente com trilha completa**: a intenção original permanece registrada (append-only), a reclassificação carrega data e justificativa, o P&L passa a ser exibido contra os benchmarks de **ambas** as intenções, e a posição é sinalizada como reclassificada em todos os relatórios. (Decisão do principal, 2026-06-12.) |
 | RN-02 | Nenhum veredito sem inputs completos. Dados insuficientes → recusa explicada, nunca estimativa silenciosa. |
-| RN-03 | Decision log é **append-only**: vereditos nunca são editados ou apagados. Cada entrada carrega hash do conteúdo. |
+| RN-03 | Decision log é **append-only**: vereditos nunca são editados ou apagados; cada entrada carrega hash do conteúdo. É permitido **adicionar anotações datadas** a uma entrada (ex.: "não abri porque X"); anotações também são append-only e nunca alteram o registro original. (Decisão do principal, 2026-06-12.) |
 | RN-04 | Simulação de canal exige protocolo de breakout completo; resultado oficial é sempre a série completa com breakouts. |
 | RN-05 | O sistema não contém código de assinatura/execução de transações nem armazena chaves privadas. |
 | RN-06 | Fees no audit são reconciliadas com eventos `collect` on-chain; divergências com o cálculo teórico são exibidas, não escondidas. |
@@ -159,8 +171,9 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 
 Interface alvo: web (Next.js) consumindo a API; CLI cobre as Fases 1-3. Princípio geral de UX: **números antes de rótulos, inputs sempre visíveis, nada de "confie em mim"**.
 
-### Tela 1 — Dashboard
-Visão geral: posições atuais (valor, fees acumuladas, distância do preço às bordas da range), regimes dos ativos da watchlist, saúde do coletor, últimos vereditos.
+### Tela 1 — Dashboard & Monitor pós-OPEN (UC-08)
+- Posições abertas: valor, **fees acumuladas vs IL acumulado**, distância do preço às bordas da range, e o status das premissas do veredito original (mantidas / mudaram — com o quê mudou).
+- Regimes dos ativos da watchlist, saúde do coletor, últimos vereditos, alertas recentes.
 
 ### Tela 2 — Watchlist & Asset View (UC-02) — a tela primária de navegação
 - Lista de tokens da watchlist (cards: regime atual + vol resumida).
@@ -186,7 +199,7 @@ Tabela por posição (intenção, fees, IL, vs benchmarks, resultado líquido) +
 Lista filtrável; entrada expandida mostra inputs completos e hash. Imutável por construção — sem botões de editar/apagar.
 
 ### Tela 8 — Configurações
-Carteiras, watchlist, intents pendentes de declaração, status de coleta. Sem campos de chave privada — por desenho, não por esquecimento.
+Carteiras, watchlist, intents pendentes de declaração, **regras de alerta e canal de notificação (UC-07)**, status de coleta. Sem campos de chave privada — por desenho, não por esquecimento.
 
 ---
 
@@ -204,12 +217,13 @@ Carteiras, watchlist, intents pendentes de declaração, status de coleta. Sem c
 
 | Papel | Nome | Status |
 |---|---|---|
-| Principal / Product Owner | Carlos | **pendente — este documento existe para validar o alinhamento** |
+| Principal / Product Owner | Carlos | **aprovado em 2026-06-12 (v1.1)** |
 | Arquiteto / Analista | Claude | autor, 2026-06-12 |
 
-Pontos que o principal deve confirmar ou corrigir para fechar a v1.0 (vira v1.1 com as correções):
+Decisões de alinhamento que produziram a v1.1 (todas do principal, 2026-06-12):
 
-1. A pergunta central e os 4 casos de uso cobrem o que tu querias da ferramenta?
-2. RN-01 (intenção imutável) e RN-03 (log imutável) estão como tu operas ou apertados demais?
-3. A Tela 3 (avaliador de range) é a tela que tu imaginavas como "ferramenta que ajuda a tomar decisões"?
-4. Falta algum fluxo do teu dia a dia de LP que não está nos UC-01..06?
+1. Fluxo primário **ativo-primeiro** (funil Momento → Pools → Range/intent → Verdict); UC-02 reescrito como porta de entrada; telas renumeradas.
+2. Vocabulário de domínio em inglês (range, intents ACCUMULATE/DISTRIBUTE/HARVEST, verdict OPEN/DON'T OPEN).
+3. RN-01 relaxada: reclassificação de intenção permitida com trilha completa e duplo benchmark.
+4. RN-03 estendida: anotações datadas append-only sobre vereditos.
+5. UC-07 (Alertas) e UC-08 (Monitor pós-OPEN) adicionados; Tela 1 vira Dashboard & Monitor.

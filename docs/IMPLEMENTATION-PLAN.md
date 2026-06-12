@@ -42,9 +42,15 @@ API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (O
 
 Next.js frontend (audit dashboard, regime panel, range evaluator screen, decision-log review) consuming the generated OpenAPI client; `ChannelSimulator` exposed via `/channels/simulate` with mandatory `ChannelPolicy` (max reopens, no-reopen floor, capital cap) — the API rejects simulations without a complete breakout protocol.
 
-**DoD:** principal can run an audit, read a regime, get an OPEN/DON'T OPEN verdict and simulate a channel entirely from the browser; channel results always display the full series including breakouts (never a filtered "good stretch").
+**DoD:** principal can run an audit, read a regime, get an OPEN/DON'T OPEN verdict and simulate a channel entirely from the browser; channel results always display the full series including breakouts (never a filtered "good stretch"); dashboard shows the post-OPEN monitor (fees vs IL race per open position, FSD UC-08).
 
-## Backlog (post-Phase 5, unscheduled)
+## Phase 6 — Alerts & verdict-premise drift
+
+`EvaluateAlertRules` in the Collector + `INotificationChannel` adapter (mechanism chosen with the principal: Telegram bot, e-mail or push); post-OPEN monitor flags when verdict premises changed (regime flip, pool IV below forecast RV), per FSD UC-07/UC-08.
+
+**DoD:** a real alert rule fires end-to-end to the configured channel; premise-drift flags visible on the dashboard with the before/after numbers; alerts inform only — no execution paths exist.
+
+## Backlog (post-Phase 6, unscheduled)
 
 - Fork descriptors (Camelot, Aerodrome) via `IDexProtocolRegistry`.
 - Postgres swap; real identity/multi-tenant (SaaS gate — principal's decision).
