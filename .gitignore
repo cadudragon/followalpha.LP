@@ -1,0 +1,28 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+artifacts/
+
+# Frontend
+node_modules/
+frontend/.next/
+frontend/out/
+
+# Python (oracle tooling)
+__pycache__/
+*.pyc
+.venv/
+
+# Local data & secrets — never commit
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+appsettings.*.local.json
+
+# IDE
+.idea/
+*.swp

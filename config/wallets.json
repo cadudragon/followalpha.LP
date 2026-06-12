@@ -1,0 +1,11 @@
+{
+  "tenantId": "default",
+  "wallets": [
+    {
+      "label": "principal",
+      "address": "0xa3660aBb49644876714611122b1618faA07e0281",
+      "chains": ["arbitrum", "base"],
+      "notes": "Carteira principal de LP. Registrada em 2026-06-12 como alvo do Modulo 0 (LP-Audit). Intencoes por posicao serao declaradas em config/intents.json quando as posicoes forem enumeradas na Fase 3."
+    }
+  ]
+}
