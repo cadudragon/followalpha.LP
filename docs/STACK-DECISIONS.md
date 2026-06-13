@@ -113,5 +113,5 @@ Rejected: TradingView Advanced Charts (closed-source, client-side indicators vio
 
 - Notification channel mechanism for alerts (Telegram bot / e-mail / push) — chosen with principal at Phase 6.
 - Exact subgraph IDs for Uni v3 on Arbitrum/Base — resolved at Phase 2, recorded in the PR.
-- The list of RN-13 context indicators on the Asset View — decided against real collected data once the Collector runs.
+- The list of RN-13 context indicators on the Asset View — analyst's recommended starting roster is in `TECH-STACK.md` ("Indicator roster for the Asset View"); final list locked against real collected data once the Collector runs. (Decision math that feeds the verdict is already fixed in Domain — that part is NOT open.)
 - Postgres + real identity/multi-tenant — SaaS gate, principal's decision.

@@ -52,6 +52,24 @@ Note on the word "oracle": in this repo it means two things — (a) Chainlink **
 
 Explicitly rejected: TradingView **Advanced Charts / widget** (free but closed-source, requires approval, pulls external scripts — and its 100+ built-in client-side indicators would violate Principle 1); D3 from scratch (cost without benefit); any paid charting SDK.
 
+### Indicator roster for the Asset View (analyst recommendation — TO CONFIRM against real data)
+
+Two buckets. The **decision math is already fixed** (lives in `Domain`, feeds the verdict); the **context indicators are a starting recommendation**, to be confirmed once the Collector has accumulated real data per the deferral in `STACK-DECISIONS.md §8` and RN-13.
+
+Decision math (FIXED, `Domain`, hand-written, tested — these are the indicators that matter for LP):
+- realized volatility cone (7/30/90d, stdev of log returns);
+- pool IV vs forecast realized vol (the cheap/expensive-vol signal);
+- empirical band survival (time-to-exit distribution by regime);
+- trendiness / path-efficiency (RANGE vs TRENDING classification);
+- fee share (own L vs competing in-range liquidity).
+
+Context indicators (RECOMMENDED starting set, Skender, labeled "context, not signal", RN-13):
+- **core context**: Bollinger Band width (visual proxy for vol compression/expansion — directly LP-relevant), ATR, long structural moving averages (reference "center" for range placement);
+- **secondary**: ADX (trend strength, corroborates the regime label);
+- **last / optional**: RSI — most directional, least range-relevant; include only if the principal wants it, and only as visual context, never as a buy/sell signal.
+
+Confirmation rule: the final roster is locked after the Collector runs and we see which indicators actually discriminate good LP setups from bad ones — not decided in the abstract (the lesson from the falsified Programs 1-2). Adding/removing an indicator updates this section and `STACK-DECISIONS.md §8`.
+
 ### Chart composition for the Asset View (FSD Tela 2)
 
 All series come from one API payload per asset (`/assets/{id}/chart`):
