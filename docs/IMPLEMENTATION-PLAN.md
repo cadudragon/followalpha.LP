@@ -14,6 +14,8 @@ Implement `Domain` per `ARCHITECTURE.md` §4: primitives (tick/price/sqrtPrice c
 
 **Golden tests:** the Python reference (`C:\Users\carlos.bezerra\Documents\Workspace\uniswap-v3-liquidity-math`) is the **oracle**: a fixture-generation script (Python, lives in `tools/oracle/`) runs the reference math over the registered cases (`test_1`, `test_2`, `example_1..3` + additional cases as needed) and writes `tests/.../Golden/fixtures.json`, committed. The C# kernel must match the oracle within documented tolerances. Python is never called from product code.
 
+Domain must expose pure functions sufficient for the replay layer (UC-09): band-survival over a price series, fee share, IL/exit-cost path, channel simulation. These are the same functions the verdict uses — replay reuses them, it does not duplicate math.
+
 **DoD:** golden tests green against oracle-generated fixtures; every public Domain member unit-tested; Domain has zero package references (BCL only); architecture tests confirm purity.
 
 ## Phase 2 — Data adapters & always-on Collector
@@ -38,7 +40,9 @@ Registered audit target (principal's wallet, positions on Arbitrum and Base): se
 
 Then the rest: API host with `/audit`, `/regime`, `/ranges/evaluate`, `/decisions` endpoints (OpenAPI); `ClassifyVolRegime` (Module 1) and `EvaluateRange` (Module 2: fee APR expected vs IL expected + IV vs forecast RV → OPEN/DON'T OPEN). Every verdict appended to the decision log with full inputs + content hash.
 
-**DoD:** evaluating a range via API persists an immutable decision-log entry retrievable via `/decisions`; regime and verdict outputs covered by use-case tests; OpenAPI spec committed.
+**Historical replay (UC-09, category A) ships alongside Module 2** via `/ranges/backtest` (and CLI): `BacktestBandSurvival`, `ReconcileFeeAprEstimateVsRealized`, `AnalyzeIvVsRvOutcome` — deterministic, no optimizer (RN-14). This is what makes the verdict's inputs falsifiable rather than opinionated; without it the verdict is just assertion.
+
+**DoD:** evaluating a range via API persists an immutable decision-log entry retrievable via `/decisions`; regime and verdict outputs covered by use-case tests; at least one historical report exists showing band survival, estimated-vs-realized fee APR where data allows, and 7d/30d sensitivity; replay contains no parameter search or threshold tuning (RN-14); OpenAPI spec committed.
 
 ## Phase 5 — Frontend & Module 3
 

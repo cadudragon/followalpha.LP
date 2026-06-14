@@ -145,6 +145,18 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 2. Quando o quadro atual diverge materialmente do quadro do veredito (ex.: regime mudou, IV caiu abaixo da vol prevista), a posição é sinalizada: **"as premissas do OPEN mudaram"** — com o quê mudou, lado a lado.
 3. A sinalização é informativa — fechar/manter é decisão do usuário; se tomada, pode ser registrada como anotação datada no decision log (RN-03).
 
+### UC-09 — Validação histórica / Replay (adicionado 2026-06-14)
+
+Propósito: **calibrar e validar os inputs** que alimentam o verdict, com replay determinístico LP-native sobre dados históricos. NÃO é uma tela de "minha regra ganha" — é análise descritiva de mecanismo. Não é porta de entrada do produto; é tela/comando de análise.
+
+Escopo permitido (descritivo — categoria A):
+1. **Sobrevivência de range**: distribuição empírica de tempo-dentro de bandas de largura W por regime ("±10% em ETH neste regime durou mediana N dias, quartis A/B").
+2. **Relação IV vs RV**: quando o pool pagou vol cara vs RV, qual foi o resultado realizado/simulado posterior (estatística descritiva, não otimização).
+3. **Reconciliação fee APR**: estimada vs realizada/simulada, com sensibilidade a janela de volume (7d/30d), largura de range e fee tier.
+4. **Channel simulator (UC-04)**: série completa incluindo breakouts.
+
+Fora de escopo da v1 (categoria B — avaliação de edge do verdict): "OPEN teria batido DON'T OPEN no histórico?" como prova de que a regra ganha **não entra na v1**. Medir edge do verdict exige pré-registro + walk-forward + out-of-sample (lição dos Programas 1-2 do projeto-mãe); a forma sancionada de responder isso é o decision log se auto-auditando em **dados novos** (forward-tracking), não backtest in-sample. O replay nunca ajusta limiares do verdict contra resultados históricos (RN-14).
+
 ---
 
 ## 4. Regras de Negócio
@@ -164,6 +176,7 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 | RN-11 | Caixa/stables rendem 0% em qualquer cálculo comparativo (yield real é upside, nunca edge modelado). |
 | RN-12 | Expectativas exibidas ao usuário seguem o teto congelado da pesquisa (10-30% a.a. em LP); o sistema não exibe projeções acima disso. |
 | RN-13 | Indicadores na Asset View só são admitidos se servirem à decisão de LP (volatilidade, comportamento de range, liquidez). Indicadores direcionais clássicos (ex.: RSI) podem aparecer como contexto visual, mas nunca viram sinal de compra/venda nem recomendação de direção. |
+| RN-14 | Todo cálculo que alimenta o verdict deve ser validável por replay histórico determinístico ou fixture; sem dados suficientes, o sistema sinaliza a limitação em vez de inferir edge. **Cláusula anti-overfitting (decisão do analista, 2026-06-14):** replay serve para calibrar/validar distribuições de input e reconciliar estimativas contra resultados realizados — **nunca** para ajustar limiares do verdict contra resultados históricos. Sem otimização automática, sem busca de parâmetros, sem genetic search. Avaliação de edge do verdict, se um dia feita, é separada, pré-registrada e walk-forward/out-of-sample — nunca in-sample. |
 
 ---
 

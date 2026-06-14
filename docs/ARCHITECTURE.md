@@ -87,6 +87,8 @@ Ports (interfaces owned by Application):
 
 Monitoring use cases (UC-07/UC-08, FSD v1.1): `EvaluateAlertRules` (Collector-driven) and `MonitorOpenPositions` (fees vs IL race, verdict-premise drift flags — informational only, never an execution path).
 
+Historical replay use cases (UC-09, FSD v1.1; decided 2026-06-14): a **thin, custom, LP-native** replay layer — no external backtesting engine in the runtime. Orchestration in Application; all math is the pure Domain kernel (band survival, fee share, IL path, channel simulation); historical data from the stores/ports. Use cases: `BacktestBandSurvival`, `ReconcileFeeAprEstimateVsRealized`, `AnalyzeIvVsRvOutcome`, `SimulateChannelPolicy`. These are **descriptive / input-calibration** (category A): measure the empirical distributions that feed the verdict and reconcile estimates against realized outcomes. **Deterministic, no optimizer** — no parameter search, no threshold tuning against historical outcomes (RN-14). Verdict-edge evaluation ("would OPEN have beaten DON'T OPEN") is category B and **out of v1**: measure verdict edge via the decision log auditing itself on new forward data, or a separate pre-registered walk-forward study — never in-sample. LEAN may be an *external* research tool for cross-checking pipelines, never a product dependency.
+
 ## 6. Infrastructure
 
 - `TheGraphPoolDataSource`: The Graph **decentralized gateway** (API key via env; the legacy hosted-service endpoint is dead). Subgraph ids configured per `IDexProtocolRegistry` descriptor. Day-1 targets: Uniswap v3 on **Arbitrum** and **Base** (forks like Camelot/Aerodrome enter later as descriptors).

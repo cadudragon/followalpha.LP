@@ -8,6 +8,7 @@ Authored 2026-06-12. Binding for implementation, same change rules as `ARCHITECT
 2. **Verdict-feeding math is ours; context math can be a library.** Anything that enters `RangeVerdictCalculator` (realized vol, trendiness, survival, fee share, IV) is hand-implemented in `Domain` (pure, golden/unit-tested). Context indicators on the Asset View (EMA/SMA/ATR/ADX/RSI/Bollinger, RN-13-gated) use a battle-tested library in `Application`.
 3. **Every market data point has a primary source and a cross-check.** Single-sourced numbers are flagged in the UI.
 4. **No paid dependencies.** If a free tier dies, the adapter swaps behind the port — that's what the ports are for.
+5. **Backtesting is a thin custom LP-native replay layer, not an external engine (decided 2026-06-14).** Concentrated-liquidity math (range, tick liquidity, fee share, IL, breakout) is not what generic order-fill backtesters model. No backtesting SDK in the v1 runtime; the replay reuses the Domain kernel. LEAN/QuantConnect may be used only as an *external* research tool for cross-checking pipelines, never a product dependency. The replay is descriptive/calibration only — no optimizer, no parameter search (RN-14).
 
 ## 1. Backend stack (.NET 10)
 
