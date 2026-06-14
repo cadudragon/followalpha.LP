@@ -86,7 +86,7 @@ Backtest do canal: simulável diretamente com a matemática do AMM (curva de liq
 
 Lições pagas com dois programas de pesquisa:
 
-1. **Pré-registro**: métricas, benchmarks e critérios definidos ANTES de olhar resultados. Mudar critério depois de ver resultado = violação de processo.
+1. **Análise cega (blind analysis) / pré-registro**: o nome formal da disciplina nº 1. Vem da física experimental (análise às cegas em física de partículas): você especifica o método, as métricas, os benchmarks e os limiares COMPLETAMENTE antes de olhar os dados de resultado — para que teu cérebro não ajuste, inconscientemente, as escolhas até a resposta sair bonita (viés do experimentador). Aplicado ao backtesting de LP: o desenho do estudo (o que medir, contra o quê, qual o critério de sucesso) é congelado antes de tocar os resultados históricos. Quando o resultado precisa ser tocado para decidir algo (categoria B — edge do verdict), a cegueira é garantida por separação: design fixado no in-sample/passado, julgamento só no out-of-sample/dados novos que o método ainda não viu. Mudar critério depois de ver resultado = violação de processo. (Foi a falta disso, em sete desenhos sobre a mesma amostra, que matou os Programas 1-2 do projeto-mãe.)
 2. **Benchmarks honestos**: toda medição contra a alternativa que tu realmente terias (HODL, ordem limite, 50/50) — nunca contra strawman.
 3. **Sem resgate retrospectivo**: posição/estratégia que falha seu critério não é "ajustada até passar". Um desenho, um julgamento.
 4. **Logs append-only commitados em git** (tamper evidence). Sem histórico, sem verdade.
