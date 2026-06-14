@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FollowAlpha.LP.Domain/FollowAlpha.LP.Domain.csproj" />
+    <Project Path="src/FollowAlpha.LP.Application/FollowAlpha.LP.Application.csproj" />
+    <Project Path="src/FollowAlpha.LP.Infrastructure/FollowAlpha.LP.Infrastructure.csproj" />
+    <Project Path="src/FollowAlpha.LP.Api/FollowAlpha.LP.Api.csproj" />
+    <Project Path="src/FollowAlpha.LP.Collector/FollowAlpha.LP.Collector.csproj" />
+    <Project Path="src/FollowAlpha.LP.Cli/FollowAlpha.LP.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FollowAlpha.LP.Domain.Tests/FollowAlpha.LP.Domain.Tests.csproj" />
+    <Project Path="tests/FollowAlpha.LP.Application.Tests/FollowAlpha.LP.Application.Tests.csproj" />
+    <Project Path="tests/FollowAlpha.LP.Infrastructure.Tests/FollowAlpha.LP.Infrastructure.Tests.csproj" />
+    <Project Path="tests/FollowAlpha.LP.Architecture.Tests/FollowAlpha.LP.Architecture.Tests.csproj" />
+  </Folder>
+  <Folder Name="/solution/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path=".editorconfig" />
+    <File Path="global.json" />
+  </Folder>
+</Solution>

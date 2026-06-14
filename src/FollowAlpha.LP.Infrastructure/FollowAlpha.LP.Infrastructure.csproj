@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Adapters. References Application + Domain. NuGet adapters (EF Core, Nethereum, …) land in Phase 2. -->
+  <ItemGroup>
+    <ProjectReference Include="..\FollowAlpha.LP.Application\FollowAlpha.LP.Application.csproj" />
+    <ProjectReference Include="..\FollowAlpha.LP.Domain\FollowAlpha.LP.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

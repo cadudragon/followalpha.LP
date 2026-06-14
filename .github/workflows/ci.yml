@@ -1,0 +1,29 @@
+name: CI
+
+# Build + test on every push and pull request. The repo may not have a GitHub remote yet;
+# this workflow activates automatically once it is pushed to GitHub. Until then, the Phase 0
+# gate is proven locally (dotnet build + dotnet test, plus the reverted-violation demonstration).
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore FollowAlpha.LP.slnx
+
+      - name: Build
+        run: dotnet build FollowAlpha.LP.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test FollowAlpha.LP.slnx --configuration Release --no-build --verbosity normal

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- ASP.NET Core minimal API host. Composition root only: references Application, and
+       Infrastructure for DI wiring (AGENTS.md hard rule 1). Endpoints land in Phase 4. -->
+  <ItemGroup>
+    <ProjectReference Include="..\FollowAlpha.LP.Application\FollowAlpha.LP.Application.csproj" />
+    <ProjectReference Include="..\FollowAlpha.LP.Infrastructure\FollowAlpha.LP.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

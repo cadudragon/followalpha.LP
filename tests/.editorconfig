@@ -1,0 +1,4 @@
+# Test-project overrides. Underscore-separated test names (Method_should_do_x) are the xUnit
+# convention and aid readability, so CA1707 is disabled here only (production code keeps it).
+[*.cs]
+dotnet_diagnostic.CA1707.severity = none

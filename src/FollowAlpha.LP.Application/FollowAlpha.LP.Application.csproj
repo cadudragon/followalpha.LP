@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Use cases + ports. References Domain only. -->
+  <ItemGroup>
+    <ProjectReference Include="..\FollowAlpha.LP.Domain\FollowAlpha.LP.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

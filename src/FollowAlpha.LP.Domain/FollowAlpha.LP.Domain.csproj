@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The pure kernel. References NOTHING: no project references, no NuGet packages (BCL only).
+       This is the rule that keeps the core provable (AGENTS.md hard rule 1-2). -->
+
+</Project>

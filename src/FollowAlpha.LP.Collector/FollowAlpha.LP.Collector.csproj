@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Collector host (composition root). Becomes a Worker Service in Phase 2 (scheduled snapshots);
+       Phase 0 keeps it a package-free console skeleton. References Application + Infrastructure (DI root). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FollowAlpha.LP.Application\FollowAlpha.LP.Application.csproj" />
+    <ProjectReference Include="..\FollowAlpha.LP.Infrastructure\FollowAlpha.LP.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
