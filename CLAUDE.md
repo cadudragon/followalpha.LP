@@ -7,7 +7,7 @@ Decision-support tool for concentrated-liquidity LPing (.NET 10 backend + Next.j
 1. `AGENTS.md` — the binding rules for any coding agent in this repo (dependency law, Domain purity, golden tests, append-only stores, secrets). **Everything in it applies to Claude too.**
 2. `LP-KNOWLEDGE.md` — domain knowledge: LP economics, intent accounting (the core principle), the 4 modules, research discipline, glossary.
 3. `docs/ARCHITECTURE.md` — architecture contract (modular monolith, hexagonal, layer rules, configuration contract).
-4. `docs/IMPLEMENTATION-PLAN.md` — phases 0-5 with definition of done; work strictly in order.
+4. `docs/IMPLEMENTATION-PLAN.md` — phases 0-6 with definition of done; work strictly in order.
 
 ## Role division
 

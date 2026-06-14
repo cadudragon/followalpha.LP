@@ -1,4 +1,4 @@
-# FSD_FollowAlphaLP_v1.0 — Documento de Especificação Funcional
+# FSD_FollowAlphaLP_v1.1 — Documento de Especificação Funcional
 
 | | |
 |---|---|
