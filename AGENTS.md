@@ -10,6 +10,9 @@ Instructions for any coding agent (Codex or other) working in this repository. T
 4. `docs/FSD_FollowAlphaLP_v1.1.md` — approved functional spec: use cases (UC-01..09), business rules (RN-01..14), screens. Authoritative for API/frontend behavior.
 5. `docs/TECH-STACK.md` — pinned libraries, data sources and chart stack for the analysis layer. Do not introduce dependencies outside it without updating it first.
 6. `docs/STACK-DECISIONS.md` — consolidated single-page reference of every architecture/package/data decision (the *what*, in one place).
+7. `docs/DATA-MODEL.md` — entities, relationships, keys, append-only vs CRUD. The EF migrations must realize this model.
+8. `docs/API-CONTRACT.md` — endpoint catalog, request/response shapes, error semantics. The generated OpenAPI must realize this.
+9. `docs/NFR.md` — measurable non-functional targets (determinism, performance, integrity, security, quality gates).
 
 ## Hard rules
 
