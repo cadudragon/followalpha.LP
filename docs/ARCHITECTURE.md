@@ -44,6 +44,14 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 - `Tick`, `SqrtPriceX96`, `Price` and the conversions between them (`price = 1.0001^tick`), `FeeTier` (with tick spacing map), `TokenAmount`, `Liquidity` (BigInteger-backed).
 - All raw-integer ↔ decimal conversion concentrated here, with documented precision policy: analytics-grade `decimal` is acceptable; tolerances are encoded in golden tests.
 
+**Price→Tick convention (decided 2026-06-14 — binding).** `tick→price`, `tick↔sqrtPriceX96`, `price↔sqrtPriceX96` are univocal. `Price→Tick` is a quantization and follows Uniswap v3 `TickMath.getTickAtSqrtRatio` semantics: the **greatest tick whose price ≤ the given price** (floor in tick space), with invariant `TickToPrice(tick) <= price < TickToPrice(tick+1)`. Three hardening rules the implementation must honor:
+
+1. **Verified rounding, not raw float.** Do not return `floor(log(price)/log(1.0001))` directly — floating error near a boundary returns the wrong integer. Compute the candidate, then **verify the invariant and correct by ±1** (the Uniswap guard step). Determinism (NFR D1) depends on this.
+2. **Orientation is explicit.** `Price` carries which direction it means (token1/token0 per the protocol). Inversion relative to the user's mental model swaps floor↔ceiling and lower↔upper — the primitive pins the orientation; range construction (below) is defined in the user's price space and mapped, never silently flipped.
+3. **Decimals live here.** Human price ↔ raw tick price includes token-decimal scaling; it is part of this single precision-policy location, not scattered.
+
+**Range-boundary conversion (separate operation).** For LP boundaries, `PriceRange.ToInitializedTicks(feeTier)`: lower bound rounds **down**, upper bound rounds **up**, both to the fee tier's initialized tick spacing. It **contains** the requested range, never silently narrows it. Invariants tested: `TickToPrice(lowerTick) <= requestedLowerPrice`, `TickToPrice(upperTick) >= requestedUpperPrice`, `lowerTick % tickSpacing == 0`, `upperTick % tickSpacing == 0`. These three concerns — canonical math, operational tick-spacing rounding, user-intent preservation — stay separate and are not mixed.
+
 ### 4.2 Liquidity math kernel (validated against the Elsts reference)
 - `LiquidityMath`: L from amounts+range (`get_liquidity_*`), amounts from L+price (`calculate_x/y`), range bounds from amounts (`calculate_a/b`), inventory deltas as price moves (whitepaper delta form). This is ~80 lines of arithmetic — it IS the core and is implemented in C#.
 - **The Python reference app is an oracle and exploration tool, never a runtime dependency.** Principal's decision (2026-06-12): do not port the *app*. Division of labor:
