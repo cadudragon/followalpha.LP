@@ -14,6 +14,8 @@ Instructions for any coding agent (Codex or other) working in this repository. T
 8. `docs/API-CONTRACT.md` — endpoint catalog, request/response shapes, error semantics. The generated OpenAPI must realize this.
 9. `docs/NFR.md` — measurable non-functional targets (determinism, performance, integrity, security, quality gates).
 
+**To execute work, use `docs/CHECKLIST.md`** — the tick-list of self-contained work orders. Each session: take the first unchecked item whose precondition tag exists, read only its listed docs, do that one item, pass its gate, commit + tick the box + tag, then stop. Designed for clean context between items.
+
 ## Hard rules
 
 1. **Dependency direction is law.** `Domain` references nothing. `Application` references only `Domain`. `Infrastructure` references `Application` + `Domain`. Hosts (`Api`, `Cli`, `Collector`) reference `Application`, and `Infrastructure` only in the DI composition root. Architecture tests enforce this; if they fail, fix your code, never the tests.
