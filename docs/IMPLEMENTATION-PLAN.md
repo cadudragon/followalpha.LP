@@ -12,7 +12,7 @@ Build the solution layout from `ARCHITECTURE.md` §3 with empty-but-compiling pr
 
 Implement `Domain` per `ARCHITECTURE.md` §4: primitives (tick/price/sqrtPrice conversions, fee tiers, BigInteger liquidity), the Elsts liquidity-math port, position model + valuation, intent benchmarks, IL computation, implied-vol formula, realized-vol and trendiness estimators, band survival estimator, fee-share estimator, range verdict calculator, channel simulator.
 
-**Golden tests:** the Python reference (`C:\Users\carlos.bezerra\Documents\Workspace\uniswap-v3-liquidity-math`) is the **oracle**: a fixture-generation script (Python, lives in `tools/oracle/`) runs the reference math over the registered cases (`test_1`, `test_2`, `example_1..3` + additional cases as needed) and writes `tests/.../Golden/fixtures.json`, committed. The C# kernel must match the oracle within documented tolerances. Python is never called from product code.
+**Golden tests:** the Python reference (vendored in `tools/oracle/reference/`) is the **oracle**: a fixture-generation script (Python, lives in `tools/oracle/`) runs the reference math over the registered cases (`test_1`, `test_2`, `example_1..3` + additional cases as needed) and writes `tests/.../Golden/fixtures.json`, committed. The C# kernel must match the oracle within documented tolerances. Python is never called from product code.
 
 Domain must expose pure functions sufficient for the replay layer (UC-09): band-survival over a price series, fee share, IL/exit-cost path, channel simulation. These are the same functions the verdict uses — replay reuses them, it does not duplicate math.
 

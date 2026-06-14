@@ -7,8 +7,9 @@ Instructions for any coding agent (Codex or other) working in this repository. T
 1. `LP-KNOWLEDGE.md` — domain knowledge: what this product is, the economics of concentrated liquidity, intent accounting, the 4 modules. **Do not implement anything that contradicts it.**
 2. `docs/ARCHITECTURE.md` — the architecture contract: solution layout, dependency rules, layer responsibilities.
 3. `docs/IMPLEMENTATION-PLAN.md` — phases with definition of done. Work strictly in phase order.
-4. `docs/FSD_FollowAlphaLP_v1.1.md` — approved functional spec: use cases, business rules (RN-01..13), screens. Authoritative for API/frontend behavior.
+4. `docs/FSD_FollowAlphaLP_v1.1.md` — approved functional spec: use cases (UC-01..09), business rules (RN-01..14), screens. Authoritative for API/frontend behavior.
 5. `docs/TECH-STACK.md` — pinned libraries, data sources and chart stack for the analysis layer. Do not introduce dependencies outside it without updating it first.
+6. `docs/STACK-DECISIONS.md` — consolidated single-page reference of every architecture/package/data decision (the *what*, in one place).
 
 ## Hard rules
 

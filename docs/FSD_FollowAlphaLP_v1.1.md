@@ -214,6 +214,9 @@ Lista filtrável; entrada expandida mostra inputs completos e hash. Imutável po
 ### Tela 8 — Configurações
 Carteiras, watchlist, intents pendentes de declaração, **regras de alerta e canal de notificação (UC-07)**, status de coleta. Sem campos de chave privada — por desenho, não por esquecimento.
 
+### Tela 9 — Validação histórica / Replay (UC-09)
+CLI-first na v1 (comando de análise); tela web opcional/posterior. Saídas: curvas de sobrevivência de banda por regime, relação IV-vs-RV (descritiva), reconciliação fee APR estimada-vs-realizada, sensibilidade 7d/30d. Exibe explicitamente "calibração de inputs, não prova de edge" e sinaliza quando faltam dados (RN-14). Nunca mostra "OPEN ganhou X% no histórico" como prova de edge.
+
 ---
 
 ## 6. Requisitos não-funcionais (resumo funcionalmente relevante)

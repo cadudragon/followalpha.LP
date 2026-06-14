@@ -47,7 +47,7 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 ### 4.2 Liquidity math kernel (validated against the Elsts reference)
 - `LiquidityMath`: L from amounts+range (`get_liquidity_*`), amounts from L+price (`calculate_x/y`), range bounds from amounts (`calculate_a/b`), inventory deltas as price moves (whitepaper delta form). This is ~80 lines of arithmetic — it IS the core and is implemented in C#.
 - **The Python reference app is an oracle and exploration tool, never a runtime dependency.** Principal's decision (2026-06-12): do not port the *app*. Division of labor:
-  - The reference repo (`C:\Users\carlos.bezerra\Documents\Workspace\uniswap-v3-liquidity-math`) is run standalone (CLI) to **generate golden fixtures**: a small script executes the Python math over the registered test cases and writes expected values to `tests/.../Golden/fixtures.json`, committed to the repo. The C# kernel must converge to the oracle, never the reverse.
+  - The reference math (vendored in `tools/oracle/reference/`) is run standalone (CLI) to **generate golden fixtures**: a small script executes the Python math over the registered test cases and writes expected values to `tests/.../Golden/fixtures.json`, committed to the repo. The C# kernel must converge to the oracle, never the reverse.
   - Its subgraph scripts remain available as-is for manual exploration/ops. Product code never shells out to Python: a subprocess at the heart of the Domain would destroy determinism, testability and VPS deployment — the opposite of a god-standard core.
 - Golden tests replicate the reference repo's `test_1`, `test_2`, `example_1..3` values (plus any oracle-generated cases) with stated tolerances. These tests are the kernel's acceptance contract.
 

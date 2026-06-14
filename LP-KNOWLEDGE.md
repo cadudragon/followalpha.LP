@@ -99,7 +99,7 @@ Base acadêmica de referência: Pardo (walk-forward como único teste válido de
 
 ## 6b. Fundação matemática adotada (avaliada em 2026-06-12)
 
-Repositório local `C:\Users\carlos.bezerra\Documents\Workspace\uniswap-v3-liquidity-math` (Atis Elsts, implementação de referência da nota técnica "Liquidity Math in Uniswap v3"):
+Referência vendorizada em `tools/oracle/reference/` (Atis Elsts, implementação de referência da nota técnica "Liquidity Math in Uniswap v3"):
 
 - `uniswap-v3-liquidity-math.py` — kernel da matemática de liquidez concentrada (L de amounts+range, recomposição exata delta_x/delta_y, bounds). Alimenta os Módulos 0, 2 e 3 (é o simulador do canal). Portar com testes unitários contra os casos conhecidos do próprio arquivo.
 - `subgraph-liquidity-range-example.py` / `-positions-` — distribuição de liquidez por tick e posições ativas: base do cálculo de fee share (tua fatia = teu L / L total na faixa) e da análise de ranges lotados.
