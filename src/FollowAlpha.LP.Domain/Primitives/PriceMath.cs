@@ -144,6 +144,44 @@ public static class PriceMath
             : rawPoolPrice * Pow10Decimal(-diff);
     }
 
+    /// <summary>
+    /// Deterministic decimal square root via Newton's method. A double seed starts the iteration;
+    /// convergence and the final value are pure decimal, hence reproducible across platforms (NFR D1).
+    /// Used by the liquidity-math kernel (sqrt of a price) and any analytics that need a decimal sqrt.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> is negative.</exception>
+    public static decimal Sqrt(decimal value)
+    {
+        if (value < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "Cannot take the square root of a negative number.");
+        }
+
+        if (value == 0m)
+        {
+            return 0m;
+        }
+
+        var guess = (decimal)Math.Sqrt((double)value);
+        if (guess <= 0m)
+        {
+            guess = value;
+        }
+
+        for (var i = 0; i < 100; i++)
+        {
+            var next = (guess + value / guess) / 2m;
+            if (next == guess)
+            {
+                break;
+            }
+
+            guess = next;
+        }
+
+        return guess;
+    }
+
     /// <summary>Integer exponentiation by squaring in decimal. <paramref name="exponent"/> must be ≥ 0.</summary>
     private static decimal PowInt(decimal value, int exponent)
     {
