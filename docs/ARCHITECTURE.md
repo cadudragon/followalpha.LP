@@ -98,6 +98,10 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 - **Fee share**: `ownL / inRangeL` (own is included → adding liquidity dilutes); the APR is **while-in-range** (the band-survival time adjustment is applied by the caller, not the estimator).
 - All estimators **fail closed** on invalid market data: prices must be strictly positive, and the inputs are validated up front.
 
+**Verdict & channel decisions (1.5 — declared before results; flagged for analyst review).**
+- **`RangeVerdictCalculator`**: OPEN iff **both** gates pass — net expectancy (expected fees over the likely horizon − expected exit cost) ≥ `MinNetExpectancy`, **and** pool IV ÷ forecast vol ≥ `MinIvToForecastRatio` (the IV gate is a veto regardless of APR, §6b). Thresholds are a caller-supplied `RangeVerdictPolicy` (no magic constants, no tuning to results, §6.1); the full inputs + policy + derived metrics are returned as the decision-log snapshot.
+- **`ChannelSimulator`**: each cycle is a single-sided LP that buys at the base and sells across the band, valued with the kernel (§4.2). CloseAtTop (price ≥ upper) is a full crossing and resets the reopen counter; BreakoutDown (price &lt; lower) is marked to market and closed; the channel halts when price is below the no-reopen floor or after `MaxReopensWithoutFullCrossing` opens without a crossing. All open/close/reopen/halt decisions are functions of price levels and counters, **never the running PnL** (§6.6). The result is the full ordered event/PnL series including every breakout and halt — never the cherry-picked good run (§5).
+
 ## 5. Application
 
 Use cases (one class per operation, CQRS-lite, no MediatR needed):

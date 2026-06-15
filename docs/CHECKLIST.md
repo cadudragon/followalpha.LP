@@ -25,7 +25,7 @@ Read: `ARCHITECTURE.md` §4, `LP-KNOWLEDGE.md` §2-3 §6, `tools/oracle/README.m
 - [x] **1.2** Liquidity-math kernel (port of `tools/oracle/reference/`) + the oracle fixture-generator script writing `tests/.../Golden/fixtures.json`. Gate: golden tests green within documented tolerances.
 - [x] **1.3** Position model + valuation; intent benchmarks (HODL / 50-50 / scaled limit order); IL / exit-cost path. Gate: unit-tested against worked examples.
 - [x] **1.4** Estimators (pure, data-as-input): realized vol, trendiness/path-efficiency, implied vol (`2·fee·√(vol/TVL)·√365`), band survival, fee share. Gate: unit-tested.
-- [ ] **1.5** `RangeVerdictCalculator` (→ `Open`/`DoNotOpen` + input snapshot) and `ChannelSimulator` (full series incl. breakouts). Gate: unit-tested; Domain still zero-package, purity tests green. Tag `phase-1-done`.
+- [x] **1.5** `RangeVerdictCalculator` (→ `Open`/`DoNotOpen` + input snapshot) and `ChannelSimulator` (full series incl. breakouts). Gate: unit-tested; Domain still zero-package, purity tests green. Tag `phase-1-done`.
 
 ## Phase 2 — Data adapters & Collector  · precondition `phase-1-done` · tag `phase-2-done`
 Read: `ARCHITECTURE.md` §6-7, `DATA-MODEL.md`, `TECH-STACK.md` §2, `NFR.md` §3-4.
