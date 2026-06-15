@@ -297,6 +297,100 @@
       "calculate_c": 1.0,
       "calculate_d": null,
       "price_move": null
+    },
+    {
+      "name": "price_at_lower",
+      "inputs": {
+        "p": 1500.0,
+        "a": 1500.0,
+        "b": 2500.0,
+        "x": 2.0,
+        "y": 0.0
+      },
+      "sqrt": {
+        "sp": 38.72983346207417,
+        "sa": 38.72983346207417,
+        "sb": 50.0
+      },
+      "liquidity": 343.6491673103708,
+      "liquidity0": 343.6491673103708,
+      "liquidity1": 0.0,
+      "calculate_x": 1.9999999999999998,
+      "calculate_y": 0.0,
+      "calculate_a1": 1500.0,
+      "calculate_a2": 1500.0,
+      "calculate_b1": 2500.0,
+      "calculate_b2": null,
+      "c_true": 1.2909944487358056,
+      "d_true": 1.0,
+      "calculate_c": null,
+      "calculate_d": 1.0,
+      "price_move": null
+    },
+    {
+      "name": "price_at_upper",
+      "inputs": {
+        "p": 2500.0,
+        "a": 1500.0,
+        "b": 2500.0,
+        "x": 0.0,
+        "y": 5000.0
+      },
+      "sqrt": {
+        "sp": 50.0,
+        "sa": 38.72983346207417,
+        "sb": 50.0
+      },
+      "liquidity": 443.64916731037084,
+      "liquidity0": 0.0,
+      "liquidity1": 443.64916731037084,
+      "calculate_x": 0.0,
+      "calculate_y": 5000.0,
+      "calculate_a1": 1500.0,
+      "calculate_a2": null,
+      "calculate_b1": 2500.0,
+      "calculate_b2": 2500.0,
+      "c_true": 1.0,
+      "d_true": 0.7745966692414834,
+      "calculate_c": 1.0,
+      "calculate_d": null,
+      "price_move": null
+    },
+    {
+      "name": "narrow_range",
+      "inputs": {
+        "p": 2000.0,
+        "a": 1999.0,
+        "b": 2001.0,
+        "x": 1.0,
+        "y": 2000.0
+      },
+      "sqrt": {
+        "sp": 44.721359549995796,
+        "sa": 44.710177812216315,
+        "sb": 44.73253849269008
+      },
+      "liquidity": 178863.07472440824,
+      "liquidity0": 89442.70512457484,
+      "liquidity1": 89442.71630491507,
+      "calculate_x": 0.9995001874137271,
+      "calculate_y": 2000.0,
+      "calculate_a1": 1999.0,
+      "calculate_a2": 1999.000499750126,
+      "calculate_b1": 2001.0005002501257,
+      "calculate_b2": 2001.000500250125,
+      "c_true": 1.00024996875781,
+      "d_true": 0.999749968742185,
+      "calculate_c": 1.0002500937890797,
+      "calculate_d": 0.9997500937109547,
+      "price_move": {
+        "p1": 2000.5,
+        "sp1": 44.72694937059759,
+        "delta_x": -0.4998437734303937,
+        "delta_y": 999.812499994265,
+        "x1": 0.5001562265696062,
+        "y1": 2999.8124999942647
+      }
     }
   ]
 }

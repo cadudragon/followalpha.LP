@@ -4,8 +4,11 @@ namespace FollowAlpha.LP.Domain.Primitives;
 
 /// <summary>
 /// Concentrated-liquidity <c>L</c>: a non-negative raw on-chain integer (<see cref="BigInteger"/>).
-/// It is dimensionless in the AMM math, so it carries no decimal scaling — only the liquidity-math
-/// kernel (item 1.2) combines it with prices.
+/// It is dimensionless in the AMM math, so it carries no decimal scaling.
+///
+/// <para><b>Not interchangeable with the kernel's analytics L.</b> <c>LiquidityMath</c> works in
+/// analytics-grade <see cref="decimal"/>; this primitive is the raw chain value. Never compare or mix
+/// the two — convert deliberately at a named boundary when raw on-chain data meets the analytics kernel.</para>
 /// </summary>
 public readonly record struct Liquidity
 {

@@ -48,6 +48,9 @@ CASES = [
     {"name": "stable", "p": 1.0, "a": 0.99, "b": 1.01, "x": 1000.0, "y": 1000.0, "p_move": 1.005},
     {"name": "price_below_range", "p": 1400.0, "a": 1500.0, "b": 2500.0, "x": 2.0, "y": 0.0, "p_move": None},
     {"name": "price_above_range", "p": 2600.0, "a": 1500.0, "b": 2500.0, "x": 0.0, "y": 5000.0, "p_move": None},
+    {"name": "price_at_lower", "p": 1500.0, "a": 1500.0, "b": 2500.0, "x": 2.0, "y": 0.0, "p_move": None},
+    {"name": "price_at_upper", "p": 2500.0, "a": 1500.0, "b": 2500.0, "x": 0.0, "y": 5000.0, "p_move": None},
+    {"name": "narrow_range", "p": 2000.0, "a": 1999.0, "b": 2001.0, "x": 1.0, "y": 2000.0, "p_move": 2000.5},
 ]
 
 

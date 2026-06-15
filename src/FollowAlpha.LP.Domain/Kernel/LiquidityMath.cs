@@ -9,24 +9,43 @@ namespace FollowAlpha.LP.Domain.Kernel;
 /// from liquidity+price, range bounds from amounts, and inventory deltas as price moves.
 ///
 /// <para><b>Numeric policy.</b> Analytics-grade <see cref="decimal"/> (not <c>double</c> like the
-/// reference): deterministic across platforms (NFR D1). All inputs are <b>square-root prices</b>
-/// (<c>sqrt(price)</c>) and human-scale amounts/liquidity, matching the reference's variables
-/// (<c>sp = sqrt(P)</c>, <c>sa = sqrt(a)</c>, <c>sb = sqrt(b)</c>). The C# kernel converges to the
-/// Python oracle within the tolerance documented in the golden fixtures — never the reverse
-/// (AGENTS.md hard rule 3). Use <see cref="PriceMath.Sqrt"/> to obtain a sqrt price from a price.</para>
+/// reference): deterministic across platforms (NFR D1). All price inputs are <b>square-root prices</b>
+/// (<c>sqrt(price)</c>), matching the reference's variables (<c>sp = sqrt(P)</c>, <c>sa = sqrt(a)</c>,
+/// <c>sb = sqrt(b)</c>). Use <see cref="PriceMath.Sqrt"/> to obtain one from a price. The C# kernel
+/// converges to the Python oracle within the tolerance in the golden fixtures — never the reverse
+/// (AGENTS.md hard rule 3).</para>
 ///
-/// <para>Unused parameters from the reference signatures (e.g. <c>sb</c> in <c>calculate_a1</c>) are
-/// dropped; the arithmetic is identical.</para>
+/// <para><b>Liquidity here is analytics-grade decimal, not raw on-chain <see cref="Liquidity"/>.</b>
+/// The <see cref="Liquidity"/> primitive is the raw <see cref="System.Numerics.BigInteger"/> L from the
+/// chain; the <see cref="decimal"/> L this kernel produces/consumes is the Elsts analytics quantity.
+/// They are <b>not</b> interchangeable and must never be compared directly — convert deliberately at a
+/// named boundary when raw and analytics meet (relevant from 1.3/1.4 onward).</para>
+///
+/// <para><b>Input contract.</b> Square-root prices must be strictly positive, amounts non-negative,
+/// liquidity strictly positive, and a range must satisfy <c>sqrtLower &lt; sqrtUpper</c>. Beyond these
+/// categorical guards, the reconstruction helpers (<see cref="CalculateA2"/>, <see cref="CalculateB2"/>,
+/// <see cref="CalculateC"/>, <see cref="CalculateD"/>) can still hit value-dependent singularities
+/// (e.g. a vanishing denominator when an amount is zero); those throw rather than return nonsense.
+/// Unused parameters from the reference signatures (e.g. <c>sb</c> in <c>calculate_a1</c>) are dropped;
+/// the arithmetic is identical.</para>
 /// </summary>
 public static class LiquidityMath
 {
     /// <summary>Liquidity from amount of token0 over a fully-above range: <c>x·sa·sb/(sb−sa)</c>.</summary>
-    public static decimal GetLiquidity0(decimal x, decimal sqrtLower, decimal sqrtUpper) =>
-        x * sqrtLower * sqrtUpper / (sqrtUpper - sqrtLower);
+    public static decimal GetLiquidity0(decimal x, decimal sqrtLower, decimal sqrtUpper)
+    {
+        RequireNonNegative(x, nameof(x));
+        RequireRange(sqrtLower, sqrtUpper);
+        return x * sqrtLower * sqrtUpper / (sqrtUpper - sqrtLower);
+    }
 
     /// <summary>Liquidity from amount of token1 over a fully-below range: <c>y/(sb−sa)</c>.</summary>
-    public static decimal GetLiquidity1(decimal y, decimal sqrtLower, decimal sqrtUpper) =>
-        y / (sqrtUpper - sqrtLower);
+    public static decimal GetLiquidity1(decimal y, decimal sqrtLower, decimal sqrtUpper)
+    {
+        RequireNonNegative(y, nameof(y));
+        RequireRange(sqrtLower, sqrtUpper);
+        return y / (sqrtUpper - sqrtLower);
+    }
 
     /// <summary>
     /// Liquidity for a position holding <paramref name="x"/> token0 and <paramref name="y"/> token1 at
@@ -36,6 +55,11 @@ public static class LiquidityMath
     /// </summary>
     public static decimal GetLiquidity(decimal x, decimal y, decimal sqrtPrice, decimal sqrtLower, decimal sqrtUpper)
     {
+        RequireNonNegative(x, nameof(x));
+        RequireNonNegative(y, nameof(y));
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequireRange(sqrtLower, sqrtUpper);
+
         if (sqrtPrice <= sqrtLower)
         {
             return GetLiquidity0(x, sqrtLower, sqrtUpper);
@@ -54,6 +78,9 @@ public static class LiquidityMath
     /// <summary>Amount of token0 for liquidity at a price (price clamped into the range): <c>L·(sb−sp)/(sp·sb)</c>.</summary>
     public static decimal CalculateX(decimal liquidity, decimal sqrtPrice, decimal sqrtLower, decimal sqrtUpper)
     {
+        RequirePositive(liquidity, nameof(liquidity));
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequireRange(sqrtLower, sqrtUpper);
         var sp = Clamp(sqrtPrice, sqrtLower, sqrtUpper);
         return liquidity * (sqrtUpper - sp) / (sp * sqrtUpper);
     }
@@ -61,6 +88,9 @@ public static class LiquidityMath
     /// <summary>Amount of token1 for liquidity at a price (price clamped into the range): <c>L·(sp−sa)</c>.</summary>
     public static decimal CalculateY(decimal liquidity, decimal sqrtPrice, decimal sqrtLower, decimal sqrtUpper)
     {
+        RequirePositive(liquidity, nameof(liquidity));
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequireRange(sqrtLower, sqrtUpper);
         var sp = Clamp(sqrtPrice, sqrtLower, sqrtUpper);
         return liquidity * (sp - sqrtLower);
     }
@@ -68,6 +98,9 @@ public static class LiquidityMath
     /// <summary>Lower range bound (price a) from liquidity and amounts: <c>(sp − y/L)^2</c>.</summary>
     public static decimal CalculateA1(decimal liquidity, decimal sqrtPrice, decimal y)
     {
+        RequirePositive(liquidity, nameof(liquidity));
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequireNonNegative(y, nameof(y));
         var sqrtLower = sqrtPrice - y / liquidity;
         return sqrtLower * sqrtLower;
     }
@@ -75,6 +108,10 @@ public static class LiquidityMath
     /// <summary>Lower range bound (price a) from amounts and the upper bound, without liquidity.</summary>
     public static decimal CalculateA2(decimal sqrtPrice, decimal sqrtUpper, decimal x, decimal y)
     {
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequirePositive(sqrtUpper, nameof(sqrtUpper));
+        RequireNonNegative(x, nameof(x));
+        RequireNonNegative(y, nameof(y));
         var sqrtLower = y / (sqrtUpper * x) + sqrtPrice - y / (sqrtPrice * x);
         return sqrtLower * sqrtLower;
     }
@@ -82,6 +119,9 @@ public static class LiquidityMath
     /// <summary>Upper range bound (price b) from liquidity and amounts: <c>((L·sp)/(L − sp·x))^2</c>.</summary>
     public static decimal CalculateB1(decimal liquidity, decimal sqrtPrice, decimal x)
     {
+        RequirePositive(liquidity, nameof(liquidity));
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequireNonNegative(x, nameof(x));
         var sqrtUpper = liquidity * sqrtPrice / (liquidity - sqrtPrice * x);
         return sqrtUpper * sqrtUpper;
     }
@@ -89,18 +129,38 @@ public static class LiquidityMath
     /// <summary>Upper range bound (price b) from amounts and the lower bound, without liquidity.</summary>
     public static decimal CalculateB2(decimal sqrtPrice, decimal sqrtLower, decimal x, decimal y)
     {
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequirePositive(sqrtLower, nameof(sqrtLower));
+        RequireNonNegative(x, nameof(x));
+        RequireNonNegative(y, nameof(y));
         var p = sqrtPrice * sqrtPrice;
         var sqrtUpper = sqrtPrice * y / ((sqrtLower * sqrtPrice - p) * x + y);
         return sqrtUpper * sqrtUpper;
     }
 
-    /// <summary>Ratio <c>c = (b/P)</c> reconstructed from <paramref name="d"/> and the amounts (whitepaper relation).</summary>
-    public static decimal CalculateC(decimal price, decimal d, decimal x, decimal y) =>
-        y / ((d - 1m) * price * x + y);
+    /// <summary>
+    /// Ratio <c>c = sb/sp = sqrt(b/P)</c> reconstructed from <paramref name="d"/> (= <c>sa/sp</c>) and
+    /// the amounts (whitepaper relation).
+    /// </summary>
+    public static decimal CalculateC(decimal price, decimal d, decimal x, decimal y)
+    {
+        RequirePositive(price, nameof(price));
+        RequireNonNegative(x, nameof(x));
+        RequireNonNegative(y, nameof(y));
+        return y / ((d - 1m) * price * x + y);
+    }
 
-    /// <summary>Ratio <c>d = (a/P)</c> reconstructed from <paramref name="c"/> and the amounts (whitepaper relation).</summary>
-    public static decimal CalculateD(decimal price, decimal c, decimal x, decimal y) =>
-        1m + y * (1m - c) / (c * price * x);
+    /// <summary>
+    /// Ratio <c>d = sa/sp = sqrt(a/P)</c> reconstructed from <paramref name="c"/> (= <c>sb/sp</c>) and
+    /// the amounts (whitepaper relation).
+    /// </summary>
+    public static decimal CalculateD(decimal price, decimal c, decimal x, decimal y)
+    {
+        RequirePositive(price, nameof(price));
+        RequireNonNegative(x, nameof(x));
+        RequireNonNegative(y, nameof(y));
+        return 1m + y * (1m - c) / (c * price * x);
+    }
 
     /// <summary>
     /// Inventory change as the price moves from <paramref name="sqrtPrice"/> to
@@ -114,6 +174,10 @@ public static class LiquidityMath
         decimal sqrtLower,
         decimal sqrtUpper)
     {
+        RequirePositive(liquidity, nameof(liquidity));
+        RequirePositive(sqrtPrice, nameof(sqrtPrice));
+        RequirePositive(sqrtPriceNext, nameof(sqrtPriceNext));
+        RequireRange(sqrtLower, sqrtUpper);
         var sp = Clamp(sqrtPrice, sqrtLower, sqrtUpper);
         var sp1 = Clamp(sqrtPriceNext, sqrtLower, sqrtUpper);
         var deltaY = (sp1 - sp) * liquidity;
@@ -123,4 +187,30 @@ public static class LiquidityMath
 
     private static decimal Clamp(decimal sqrtPrice, decimal sqrtLower, decimal sqrtUpper) =>
         Math.Max(Math.Min(sqrtPrice, sqrtUpper), sqrtLower);
+
+    private static void RequirePositive(decimal value, string name)
+    {
+        if (value <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(name, value, "Must be strictly positive.");
+        }
+    }
+
+    private static void RequireNonNegative(decimal value, string name)
+    {
+        if (value < 0m)
+        {
+            throw new ArgumentOutOfRangeException(name, value, "Must be non-negative.");
+        }
+    }
+
+    private static void RequireRange(decimal sqrtLower, decimal sqrtUpper)
+    {
+        RequirePositive(sqrtLower, nameof(sqrtLower));
+        RequirePositive(sqrtUpper, nameof(sqrtUpper));
+        if (sqrtLower >= sqrtUpper)
+        {
+            throw new ArgumentException("sqrtLower must be strictly below sqrtUpper.", nameof(sqrtUpper));
+        }
+    }
 }
