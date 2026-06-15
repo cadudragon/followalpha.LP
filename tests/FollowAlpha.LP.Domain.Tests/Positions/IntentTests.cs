@@ -54,30 +54,73 @@ public class IntentTests
         history.DistinctIntents().Should().Equal(Intent.Harvest, Intent.Accumulate);
     }
 
-    [Theory]
-    [InlineData(Intent.Harvest, new[] { BenchmarkKind.Hodl, BenchmarkKind.FiftyFifty })]
-    [InlineData(Intent.Accumulate, new[] { BenchmarkKind.LimitOrder })]
-    [InlineData(Intent.Distribute, new[] { BenchmarkKind.LimitOrder })]
-    public void Intent_maps_to_its_benchmarks(Intent intent, BenchmarkKind[] expected)
+    // Benchmark specs, by full identity (kind + side + ladder for limit orders).
+    private static readonly BenchmarkSpec AccQuote = BenchmarkSpec.LimitOrder(LadderSide.Accumulate, LimitLadder.UniformQuoteByPrice);
+    private static readonly BenchmarkSpec AccBase = BenchmarkSpec.LimitOrder(LadderSide.Accumulate, LimitLadder.UniformBaseByPrice);
+    private static readonly BenchmarkSpec DistQuote = BenchmarkSpec.LimitOrder(LadderSide.Distribute, LimitLadder.UniformQuoteByPrice);
+    private static readonly BenchmarkSpec DistBase = BenchmarkSpec.LimitOrder(LadderSide.Distribute, LimitLadder.UniformBaseByPrice);
+
+    [Fact]
+    public void Harvest_maps_to_hodl_and_fifty_fifty()
     {
-        IntentBenchmarks.For(intent).Should().Equal(expected);
+        IntentBenchmarks.For(Intent.Harvest).Should().Equal(BenchmarkSpec.Hodl, BenchmarkSpec.FiftyFifty);
     }
 
     [Fact]
-    public void Reclassified_history_uses_both_intents_benchmarks()
+    public void Accumulate_maps_to_both_accumulate_limit_specs()
+    {
+        IntentBenchmarks.For(Intent.Accumulate).Should().Equal(AccQuote, AccBase);
+    }
+
+    [Fact]
+    public void Distribute_maps_to_both_distribute_limit_specs()
+    {
+        IntentBenchmarks.For(Intent.Distribute).Should().Equal(DistQuote, DistBase);
+    }
+
+    [Fact]
+    public void Accumulate_and_distribute_specs_are_distinct_identities()
+    {
+        // The crux: accumulate and distribute limit orders must not collapse to one "LimitOrder".
+        AccQuote.Should().NotBe(DistQuote);
+        IntentBenchmarks.For(Intent.Accumulate).Should().NotContain(DistQuote);
+    }
+
+    [Fact]
+    public void Reclassify_accumulate_to_distribute_yields_four_distinct_specs()
+    {
+        var history = new IntentHistory(new IntentRecord(Intent.Accumulate, T0, "accumulate below"))
+            .Reclassify(new IntentRecord(Intent.Distribute, T1, "flipped to distribute above"));
+
+        IntentBenchmarks.For(history).Should().Equal(AccQuote, AccBase, DistQuote, DistBase);
+    }
+
+    [Fact]
+    public void Reclassify_harvest_to_accumulate_yields_hodl_fifty_and_both_accumulate()
     {
         var history = new IntentHistory(new IntentRecord(Intent.Harvest, T0, "opened harvest"))
             .Reclassify(new IntentRecord(Intent.Accumulate, T1, "now accumulate"));
 
         IntentBenchmarks.For(history)
-            .Should().Equal(BenchmarkKind.Hodl, BenchmarkKind.FiftyFifty, BenchmarkKind.LimitOrder);
+            .Should().Equal(BenchmarkSpec.Hodl, BenchmarkSpec.FiftyFifty, AccQuote, AccBase);
     }
 
     [Fact]
-    public void Single_intent_history_uses_only_that_intents_benchmarks()
+    public void Single_intent_history_uses_only_that_intents_specs()
     {
         var history = new IntentHistory(new IntentRecord(Intent.Harvest, T0, "harvest"));
 
-        IntentBenchmarks.For(history).Should().Equal(BenchmarkKind.Hodl, BenchmarkKind.FiftyFifty);
+        IntentBenchmarks.For(history).Should().Equal(BenchmarkSpec.Hodl, BenchmarkSpec.FiftyFifty);
+    }
+
+    [Fact]
+    public void Repeated_reclassification_to_a_seen_intent_does_not_duplicate_specs()
+    {
+        var history = new IntentHistory(new IntentRecord(Intent.Harvest, T0, "harvest"))
+            .Reclassify(new IntentRecord(Intent.Accumulate, T1, "accumulate"))
+            .Reclassify(new IntentRecord(Intent.Harvest, T1, "back to harvest"));
+
+        IntentBenchmarks.For(history)
+            .Should().Equal(BenchmarkSpec.Hodl, BenchmarkSpec.FiftyFifty, AccQuote, AccBase);
     }
 }
