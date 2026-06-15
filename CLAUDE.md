@@ -1,6 +1,6 @@
 # CLAUDE.md — FollowAlpha.LP
 
-Decision-support tool for concentrated-liquidity LPing (.NET 10 backend + Next.js frontend). It audits LP positions, classifies volatility regimes, prices ranges (OPEN / DON'T OPEN verdicts) and simulates channel strategies. **It recommends; the human executes. Read-only on-chain — no signing code, ever.**
+Decision-support tool for concentrated-liquidity LPing (.NET 10 backend + Next.js frontend). It classifies volatility regimes, compares pools, suggests/evaluates ranges (OPEN / DON'T OPEN verdicts), runs descriptive replay/backtesting, simulates channel strategies, and audits LP positions as calibration. **It recommends; the human executes. Read-only on-chain — no signing code, ever.**
 
 ## Read first
 
@@ -20,7 +20,7 @@ If you (Claude) are asked to implement: follow `AGENTS.md` exactly, like any oth
 ## Project state markers
 
 - Phases complete are tagged `phase-N-done` in git. Check tags before assuming what exists.
-- Audit target wallet: `config/wallets.json`. Per-position intents: `config/intents.json` (created in Phase 3).
+- Audit target wallet: `config/wallets.json`. Per-position intents: `config/intents.json` (created when LP-Audit lands in Phase 4).
 - Golden fixtures: `tests/FollowAlpha.LP.Domain.Tests/Golden/fixtures.json`, generated only by `tools/oracle/` (Python reference, vendored). Never hand-edit.
 
 ## Commands (valid once Phase 0 lands)
@@ -30,7 +30,7 @@ dotnet build FollowAlpha.LP.slnx
 dotnet test FollowAlpha.LP.slnx          # includes architecture tests — must stay green
 ```
 
-Frontend (`frontend/`, from Phase 5): `npm run dev` / `npm run build` / `npm run lint`.
+Frontend (`frontend/`, from Phase 6 after `phase-5-go`): `npm run dev` / `npm run build` / `npm run lint`.
 
 ## Non-negotiables worth repeating
 

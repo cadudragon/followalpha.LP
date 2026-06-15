@@ -4,7 +4,7 @@ Authored 2026-06-12 by the project architect. This is a binding contract for imp
 
 ## 1. What this system is
 
-A decision-support tool for concentrated-liquidity LPing (Program 3 charter, see `LP-KNOWLEDGE.md`): it audits past LP positions, classifies volatility regimes, prices ranges (fees expected vs IL expected, pool-implied vol vs forecast vol) and renders auditable **OPEN / DON'T OPEN** verdicts, and simulates channel strategies with mandatory breakout protocols. It **recommends; the human executes**. Read-only on-chain.
+A decision-support tool for concentrated-liquidity LPing (Program 3 charter, see `LP-KNOWLEDGE.md`): it classifies volatility regimes, compares pools, prices ranges (fees expected vs IL expected, pool-implied vol vs forecast vol) and renders auditable **OPEN / DON'T OPEN** verdicts, replays range/channel behavior historically, and audits past LP positions as calibration. It **recommends; the human executes**. Read-only on-chain.
 
 Operational profile: single user today; potentially SaaS later. Always-on deployment (VPS) because tick-level liquidity distributions cannot be reconstructed retroactively — the collector snapshots them continuously from day 1.
 
@@ -41,25 +41,28 @@ Hosts contain no logic: composition root (DI), configuration binding, transport 
 Pure, deterministic, immutable, fully unit-tested. Contents:
 
 ### 4.1 Primitives
-- `Tick`, `SqrtPriceX96`, `Price` and the conversions between them (`price = 1.0001^tick`), `FeeTier` (with tick spacing map), `TokenAmount`, `Liquidity` (BigInteger-backed).
-- All raw-integer ↔ decimal conversion concentrated here, with documented precision policy: analytics-grade `decimal` is acceptable; tolerances are encoded in golden tests.
+- `Tick`, `SqrtPriceX96`, `HumanPrice`, `PoolPrice`, `TokenDecimals`, `FeeTier` (with tick spacing map), `TokenAmount`, `Liquidity` (BigInteger-backed).
+- All raw-integer <-> decimal conversion is concentrated here, with documented precision policy: exact raw on-chain math for `Tick <-> SqrtPriceX96`; analytics-grade `decimal` for human-scale price views; tolerances are encoded in tests.
 
-**Price→Tick convention (decided 2026-06-14 — binding).** `tick→price`, `tick↔sqrtPriceX96`, `price↔sqrtPriceX96` are univocal. `Price→Tick` is a quantization and follows Uniswap v3 `TickMath.getTickAtSqrtRatio` semantics: the **greatest tick whose price ≤ the given price** (floor in tick space), with invariant `TickToPrice(tick) <= price < TickToPrice(tick+1)`. Three hardening rules the implementation must honor:
+**Human price, raw pool price, and tick conversion (decided 2026-06-15 - binding).** Human prices and raw pool prices are distinct types (C-lite): `HumanPrice(value, orientation)`, `PoolPrice(rawToken1PerToken0)`, `TokenDecimals(token0, token1)`. The only path to a tick is `HumanPrice + TokenDecimals -> PoolPrice -> Tick/SqrtPriceX96`. This makes the footgun `new Price(2000).ToTick()` (no decimals) unrepresentable. Scaling rule: `P_raw = P_human(token1/token0) * 10^(dec1 - dec0)` (and invert first if the human price is token0/token1). Example USDC(dec0=6)/WETH(dec1=18): human `0.0005` (WETH per USDC) -> raw `0.0005 * 10^12 = 5e8`.
 
-1. **Verified rounding, not raw float.** Do not return `floor(log(price)/log(1.0001))` directly — floating error near a boundary returns the wrong integer. Compute the candidate, then **verify the invariant and correct by ±1** (the Uniswap guard step). Determinism (NFR D1) depends on this.
-2. **Orientation is explicit.** `Price` carries which direction it means (token1/token0 per the protocol). Inversion relative to the user's mental model swaps floor↔ceiling and lower↔upper — the primitive pins the orientation; range construction (below) is defined in the user's price space and mapped, never silently flipped.
-3. **Decimals live here.** Human price ↔ raw tick price includes token-decimal scaling; it is part of this single precision-policy location, not scattered.
+`PoolPrice -> Tick` is the only decimal-to-tick quantization. It follows Uniswap v3 `TickMath.getTickAtSqrtRatio` semantics: the **greatest tick whose raw pool price <= the given raw pool price** (floor in tick space), with invariant `Tick.ToPoolPrice(tick) <= poolPrice < Tick.ToPoolPrice(tick+1)` inside the supported analytics decimal window. Hardening rules:
 
-**Range-boundary conversion (separate operation).** For LP boundaries, `PriceRange.ToInitializedTicks(feeTier, decimals)`: lower bound rounds **down**, upper bound rounds **up**, both to the fee tier's initialized tick spacing. It **contains** the requested range, never silently narrows it. Invariants tested: `TickToPrice(lowerTick) <= requestedLowerPrice`, `TickToPrice(upperTick) >= requestedUpperPrice`, `lowerTick % tickSpacing == 0`, `upperTick % tickSpacing == 0`. These three concerns — canonical math, operational tick-spacing rounding, user-intent preservation — stay separate and are not mixed.
+1. **Verified rounding, not raw float.** Do not return `floor(log(price)/log(1.0001))` directly; floating error near a boundary returns the wrong integer. Compute the candidate, then verify the invariant and correct by +/-1 (the Uniswap guard step). Determinism (NFR D1) depends on this.
+2. **Orientation is explicit.** `HumanPrice` carries which direction it means. Inversion relative to the user's mental model swaps floor/ceiling and lower/upper; the primitive pins the orientation, and range construction is defined in the user's price space and mapped explicitly.
+3. **Decimals live here.** Human price <-> raw pool price includes token-decimal scaling; it is part of this single precision-policy location, not scattered.
 
-**Foundation hardening (decided 2026-06-15 — binding; supersedes the bare `Price` of the previous draft).** A code review found that the first 1.1 draft never applied token-decimal scaling on the human→raw price path (a human number fed straight to `ToTick` lands hundreds of thousands of ticks off in a real pool) and approximated `tick↔sqrtPriceX96` with `sqrt(decimal)`+floor, which does **not** match the on-chain raw value (`getSqrtRatioAtTick` rounds the Q128.128→Q64.96 downcast **up**). The corrected design:
+**`Tick <-> SqrtPriceX96` is exact raw on-chain math.** It is an integer port of Uniswap v3-core `TickMath` (`GetSqrtRatioAtTick` with the round-up downcast; `GetTickAtSqrtRatio` as the greatest tick whose ratio <= input). `sqrtPriceX96` is raw on-chain data and must match Uniswap bit-for-bit, not be an analytics approximation. Validated against the published constants `getSqrtRatioAtTick(0)=2^96`, `MIN_SQRT_RATIO`, `MAX_SQRT_RATIO`.
 
-1. **Human price and raw pool price are distinct types (C-lite).** `HumanPrice(value, orientation)`, `PoolPrice(rawToken1PerToken0)`, `TokenDecimals(token0, token1)`. The only path to a tick is `HumanPrice + TokenDecimals → PoolPrice → Tick/SqrtPriceX96`. This makes the footgun `new Price(2000).ToTick()` (no decimals) unrepresentable. Scaling rule: `P_raw = P_human(token1/token0) · 10^(dec1 − dec0)` (and invert first if the human price is token0/token1). Example USDC(dec0=6)/WETH(dec1=18): human `0.0005` (WETH per USDC) → raw `0.0005 · 10^12 = 5e8`.
-2. **`Tick ↔ SqrtPriceX96` is an exact integer port of Uniswap v3-core `TickMath`** (`GetSqrtRatioAtTick` with the round-up downcast; `GetTickAtSqrtRatio` as the greatest tick whose ratio ≤ input). `sqrtPriceX96` is raw on-chain data and must match Uniswap bit-for-bit, not be an analytics approximation. Validated against the published constants `getSqrtRatioAtTick(0)=2^96`, `MIN_SQRT_RATIO`, `MAX_SQRT_RATIO`.
-3. **Reference, not dependency.** `Nethereum.Uniswap` (cloned at `C:\SRC\reference_libs\Nethereum.Uniswap`) and the vendored v3-core `TickMath.sol` are used for cross-check / test vectors / future liquidity-math reference only. The Domain stays BCL-only — nothing from them is referenced at runtime. (Note: that clone's `V4TickMath` is scale-buggy — `GetSqrtRatioAtTick(0)` returns 2^64 — so the authoritative source is the vendored canonical `TickMath.sol` plus its published `MIN/MAX_SQRT_RATIO`.)
-4. **`Tick` keeps the full Uniswap range `[-887272, 887272]`** (raw on-chain fidelity). The analytics **decimal view** (`1.0001^tick`) is what is range-limited: a tick whose price falls outside the analytics-grade `decimal` window throws `PriceOutsideDecimalRangeException`, not a raw `OverflowException`. Raw/on-chain/canonical (`Tick`/`SqrtPriceX96`/`PoolPrice`) and the analytics decimal `HumanPrice` view are kept explicitly separate: `Tick.ToSqrtPriceX96()` is exact; `Tick.ToPoolPrice()` / `PoolPrice.ToHumanPrice(...)` are analytics-grade decimal.
-5. **`TokenAmount` rejects negatives** (a future `TokenDelta` covers signed variation) and exposes **explicit rounding** — `FromDecimalExact` (throws if not representable at the given decimals), `FromDecimalFloor`, `FromDecimalRounded(mode)` — never a silent default. On-chain base units are not invented by hidden rounding.
-6. **Domain BCL-only is asserted directly** (architecture test on `FollowAlpha.LP.Domain.csproj` containing no `PackageReference`), in addition to the namespace-dependency rules.
+**Raw vs analytics are separate.** `Tick` keeps the full Uniswap range `[-887272, 887272]` (raw on-chain fidelity). The analytics **decimal view** (`1.0001^tick`) is what is range-limited: a tick whose price falls outside the analytics-grade `decimal` window throws `PriceOutsideDecimalRangeException`, not a raw `OverflowException`. `Tick.ToSqrtPriceX96()` is exact; `Tick.ToPoolPrice()` / `PoolPrice.ToHumanPrice(...)` are analytics-grade decimal.
+
+**Range-boundary conversion (separate operation).** For LP boundaries, `PriceRange.ToInitializedTicks(feeTier, decimals)`: lower bound rounds **down**, upper bound rounds **up**, both to the fee tier's initialized tick spacing. It **contains** the requested range, never silently narrows it. Invariants tested: the initialized lower tick's human price is at or below the requested lower human price, the initialized upper tick's human price is at or above the requested upper human price, `lowerTick % tickSpacing == 0`, `upperTick % tickSpacing == 0`. These concerns - canonical math, operational tick-spacing rounding, user-intent preservation - stay separate and are not mixed.
+
+**Reference, not dependency.** `Nethereum.Uniswap` (cloned at `C:\SRC\reference_libs\Nethereum.Uniswap`) and the vendored v3-core `TickMath.sol` are used for cross-check / test vectors / future liquidity-math reference only. The Domain stays BCL-only; nothing from them is referenced at runtime. (Note: that clone's `V4TickMath` is scale-buggy: `GetSqrtRatioAtTick(0)` returns 2^64, so the authoritative source is the vendored canonical `TickMath.sol` plus its published `MIN/MAX_SQRT_RATIO`.)
+
+**`TokenAmount` rejects negatives** (a future `TokenDelta` covers signed variation) and exposes **explicit rounding**: `FromDecimalExact` (throws if not representable at the given decimals), `FromDecimalFloor`, `FromDecimalRounded(mode)`; never a silent default. On-chain base units are not invented by hidden rounding.
+
+**Domain BCL-only is asserted directly** (architecture test on `FollowAlpha.LP.Domain.csproj` containing no `PackageReference`), in addition to the namespace-dependency rules.
 
 ### 4.2 Liquidity math kernel (validated against the Elsts reference)
 - `LiquidityMath`: L from amounts+range (`get_liquidity_*`), amounts from L+price (`calculate_x/y`), range bounds from amounts (`calculate_a/b`), inventory deltas as price moves (whitepaper delta form). This is ~80 lines of arithmetic — it IS the core and is implemented in C#.
@@ -73,6 +76,11 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 - `Intent` = `Accumulate | Distribute | Harvest` with its benchmark mapping (see `LP-KNOWLEDGE.md` §3). Intent records are immutable; reclassification **appends** a new intent record (dated, with reason) — the original is preserved, valuations after reclassification are computed against both intents' benchmarks, and the position is flagged in all reports.
 - IL / LVR-style computations: position value vs each benchmark over a price path or at a point.
 
+**Scaled-limit-order benchmark definition (decided 2026-06-15 — binding).** The benchmark is the *dry* (no-fee) scaled order you would otherwise place over the same range `[a,b]` with the **same single-sided capital** the position deposited (token1 for `Accumulate`, token0 for `Distribute`); the position's own average fill is the geometric mean `√(a·b)`. Two ladders are computed; partial fills are valued at the current price (the unfilled budget stays in its original token):
+- **Primary — `UniformQuoteByPrice`**: equal quote per equally-spaced price level → continuous average fill = the **logarithmic mean** `(b−a)/ln(b/a)`. This is the official number for reports/verdicts ("did the LP beat the realistic dry ladder?").
+- **Secondary — `UniformBaseByPrice`**: equal base (token0) per level → average fill = the **arithmetic mean** `(a+b)/2`. A sensitivity perspective only, not a substitute.
+- Rejected: defining the benchmark as the AMM's own fee-less profile (edge would be fees only — not an independent alternative, contrary to `LP-KNOWLEDGE.md` §3/§6.2).
+
 ### 4.4 Pricing & signals (pure functions; data arrives as inputs)
 - `ImpliedVolCalculator`: `IV = 2·fee·sqrt(dailyVolume / tickTvl)·sqrt(365)`.
 - `RealizedVolEstimator`, `TrendinessEstimator` (path-efficiency / ADX-like) — pure given a price series.
@@ -85,10 +93,10 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 
 Use cases (one class per operation, CQRS-lite, no MediatR needed):
 
-- Module 0: `AuditWalletPositions` (wallet → per-position audit: fees collected vs IL vs HODL vs intent benchmark, costs included).
 - Module 1: `ClassifyVolRegime` (asset → RANGE/TRENDING/TRANSITION + evidence).
-- Module 2: `EvaluateRange` (pool, band, intent → verdict, persisted to decision log).
+- Module 2 / Range Advisor: `CompareAssetPools`, `SuggestRangeCandidates` (deterministic predeclared band grid, no optimizer), `EstimateRangeApr`, `EvaluateRange` (pool, band, intent → verdict, persisted to decision log), `BacktestBandSurvival`, `ReconcileFeeAprEstimateVsRealized`, `AnalyzeIvVsRvOutcome`.
 - Module 3: `SimulateChannel`, `EvaluateChannelPolicy`.
+- Module 0 / calibration: `AuditWalletPositions` (wallet → per-position audit: fees collected vs IL vs HODL vs intent benchmark, costs included).
 - Ingestion: `SnapshotPool`, `IngestPositionEvents`, `IngestPriceSeries` (called by Collector).
 
 Ports (interfaces owned by Application):
@@ -116,9 +124,9 @@ Historical replay use cases (UC-09, FSD v1.1; decided 2026-06-14): a **thin, cus
 ## 7. Hosts
 
 - **Collector** (Worker Service, runs on the VPS): scheduled jobs — pool snapshots (state, day volume, tick liquidity distribution) for a configured watchlist, price series refresh, wallet event sync. Idempotent; health endpoint; structured logs (Serilog). Missing a run is recoverable for events/prices, NOT for tick distributions — hence always-on.
-- **Api** (ASP.NET Core minimal APIs): REST + OpenAPI. Endpoints mirror use cases (`/audit`, `/regime`, `/ranges/evaluate`, `/channels/simulate`, `/decisions`). Auth: API-key middleware seam (single key today; real identity later). CORS for the frontend origin.
-- **Cli**: thin wrapper over the same use cases for Phase 1-3 operation and ops tasks (run audit, trigger snapshot, export decision log).
-- **frontend/** (Next.js + TypeScript): dashboards — audit report, regime panel, range evaluator (the OPEN/DON'T OPEN screen with its inputs), channel simulator, decision-log review. Consumes the OpenAPI-generated client. Charts: lightweight-charts or recharts. **No business logic client-side** — the API is the single source of verdicts.
+- **Api** (ASP.NET Core minimal APIs): REST + OpenAPI. Endpoints mirror use cases (`/assets`, `/regime`, `/ranges/evaluate`, `/ranges/backtest`, `/channels/simulate`, `/audit`, `/decisions`). Auth: API-key middleware seam (single key today; real identity later). CORS for the frontend origin.
+- **Cli**: thin wrapper over the same use cases for headless operation and ops tasks (run Range Advisor flow, replay, audit, trigger snapshot, export decision log).
+- **frontend/** (Next.js + TypeScript): dashboards — asset-first range evaluator (the OPEN/DON'T OPEN screen with its inputs), replay/backtest views after the value gate, channel simulator, audit report, decision-log review. Consumes the OpenAPI-generated client. Charts: lightweight-charts or recharts. **No business logic client-side** — the API is the single source of verdicts.
 
 ## 8. Cross-cutting rules
 

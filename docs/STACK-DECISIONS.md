@@ -109,9 +109,9 @@ Rejected: TradingView Advanced Charts (closed-source, client-side indicators vio
 - Domain language in English (range, fees, IL, intents ACCUMULATE/DISTRIBUTE/HARVEST, verdict OPEN/DON'T OPEN, regimes RANGE/TRENDING/TRANSITION); UI prose pt-BR.
 - CI: GitHub Actions — build + all tests on push; frontend lint/build job.
 
-## 7b. Backtesting (decided 2026-06-14 — NOT open)
+## 7b. Backtesting (decided 2026-06-14, priority updated 2026-06-15 — NOT open)
 
-v1 ships a **thin, custom, LP-native deterministic replay layer**, not a generic backtesting engine. Orchestration in Application, math in the Domain kernel, data from the stores. Purpose: calibrate/validate the verdict's inputs (band survival, IV-vs-RV outcomes, fee APR estimated-vs-realized) — category A. **No optimizer, no parameter/threshold search (RN-14).** Verdict-edge evaluation (category B) is out of v1 — answered by the decision log on new forward data or a separate pre-registered walk-forward study, never in-sample. LEAN allowed only as an external research cross-check, never a runtime dependency.
+v1 ships a **thin, custom, LP-native deterministic replay layer**, not a generic backtesting engine. Orchestration in Application, math in the Domain kernel, data from the stores. Purpose: calibrate/validate the verdict's inputs (band survival, IV-vs-RV outcomes, fee APR estimated-vs-realized) — category A. **No optimizer, no parameter/threshold search (RN-14).** On 2026-06-15 this replay was promoted into the first product-value path: Range Advisor must use it to explain candidate ranges/pools before LP-Audit is required. Candidate ranges come from a deterministic predeclared grid, not from fitting historical winners. Verdict-edge evaluation (category B) is out of v1 — answered by the decision log on new forward data or a separate pre-registered walk-forward study, never in-sample. LEAN allowed only as an external research cross-check, never a runtime dependency.
 
 ## 8. Still open (decided to defer, not forgotten)
 

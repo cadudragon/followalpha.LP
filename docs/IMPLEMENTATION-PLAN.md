@@ -4,7 +4,9 @@ Authored 2026-06-14. Phases are strictly ordered. Each phase has a **Crivo (gate
 
 ## Governing principle: prove value before building UI
 
-The frontend is **not** built until the tool has demonstrated, on the principal's real data, that it surfaces a true, non-obvious, decision-relevant edge. There is an explicit **GO/NO-GO Value Validation gate (Phase 5)** between the analytical core and any UI work. If the tool cannot prove its worth as an API/CLI on real history, we do not paint a screen on top of it — we rethink the fundamentals. A pretty UI over a worthless engine is the most expensive failure mode; this plan makes it structurally impossible.
+The frontend is **not** built until the tool has demonstrated, on real watchlist pools and the principal's real context, that it surfaces true, non-obvious, decision-relevant LP information. There is an explicit **GO/NO-GO Value Validation gate (Phase 5)** between the headless analytical product and any UI work. If the Range Advisor cannot help choose pools/ranges better than eyeballing a DEX screen, we do not paint a screen on top of it — we rethink the fundamentals. A pretty UI over a worthless engine is the most expensive failure mode; this plan makes it structurally impossible.
+
+Product-order decision (2026-06-15): the first value proof is **Range Advisor / Range Intelligence with descriptive replay**, not LP-Audit. LP-Audit remains valuable, but moves later as calibration and self-confrontation against the principal's history.
 
 ## How the Crivo works (roles)
 
@@ -37,31 +39,36 @@ Infrastructure per §6: The Graph gateway adapter (Uni v3 on Arbitrum + Base), N
 
 **Crivo (agent):** builds/runs against real endpoints with env vars; every job idempotent (proven by test); integration tests pass against recorded fixtures; no secret in repo; data persisted exactly per `DATA-MODEL.md` with append-only enforced at the repository interface (tested). **Crivo (principal):** deploys to the VPS via the runbook; confirms snapshots accumulating on both chains. Agents never receive VPS credentials. Tag `phase-2-done` after the agent gate; the principal-deploy step is logged separately.
 
-## Phase 3 — Module 0: LP-Audit (first real answer)
+## Phase 3 — Range Advisor & descriptive replay (first real answer)
 
-`AuditWalletPositions` + CLI: wallet → per-position audit (fees reconciled with `COLLECT` events, IL realized, gas, vs HODL / 50-50 / intent benchmark; reclassified positions show both benchmarks — RN-01). Deterministic report (JSON + markdown). Audit target: `config/wallets.json`.
-
-**Crivo:** runs end-to-end on the principal's real wallets; report **reproducible** (same inputs → byte-identical, including hash); fee reconciliation differences explained or flagged (RN-06); 422-style refusal where data is insufficient (RN-02). Tag `phase-3-done`.
-
-## Phase 4 — Analytical core: regime, range eval, replay, channel (API/CLI only — NO frontend)
-
-This is the whole decision engine, headless. API host (`API-CONTRACT.md`) + CLI:
+This is the first useful product surface, headless. API host (`API-CONTRACT.md`) + CLI for the asset-first decision flow:
+- `ClassifyVolRegime` (Module 1, `/regime`) — RANGE/TRENDING/TRANSITION, no direction.
+- Pool comparison for an asset — fee tier, volume/TVL, pool IV, competing liquidity.
+- `SuggestRangeCandidates` (`/ranges/candidates`) — deterministic candidate bands from a predeclared grid, ranked by IV-vs-RV, band survival, expected fees, IL, and intent fit; **not** an optimizer and not tuned against historical outcomes.
 - `EstimateRangeApr` (`/ranges/estimate-apr`) — honest APR: self-dilution, while-in-range vs time-adjusted, 7d/30d sensitivity; QA cross-checked against Metrix Finance.
-- `ClassifyVolRegime` (Module 1, `/regime`).
-- `EvaluateRange` (Module 2, `/ranges/evaluate`) — fee APR vs IL + IV vs forecast RV → `OPEN`/`DONT_OPEN`; every call appends an immutable `DecisionLogEntry` (inputs + hash), even when not opened (RN-03).
+- `EvaluateRange` (Module 2, `/ranges/evaluate`) — fee APR vs IL + IV vs forecast RV + band survival → `OPEN`/`DONT_OPEN`; every call appends an immutable `DecisionLogEntry` (inputs + hash), even when not opened (RN-03).
 - Replay (UC-09 category A, `/ranges/backtest`) — band survival, IV-vs-RV outcomes, fee-APR reconciliation; deterministic, **no optimizer / no threshold tuning** (RN-14).
-- `SimulateChannel` (Module 3, `/channels/simulate`) — full series including breakouts; rejects incomplete breakout protocol (RN-04).
 
-**Crivo:** verdict + replay + audit all reachable via API/CLI; decision-log entries immutable and retrievable; outputs deterministic and reproducible; replay proven free of parameter search (code review + test); `422` returned on thin data, never a guess; OpenAPI spec committed and matching `API-CONTRACT.md`. Tag `phase-4-done`. **No frontend code exists yet — by design.**
+**Crivo:** regime + pool comparison + verdict + replay reachable via API/CLI on real watchlist pools; decision-log entries immutable and retrievable; outputs deterministic and reproducible; replay proven free of parameter search (code review + test); `422` returned on thin data, never a guess; OpenAPI spec committed and matching `API-CONTRACT.md`. Tag `phase-3-done`. **No frontend code exists yet — by design.**
+
+## Phase 4 — LP-Audit, channel simulator, and integrated headless product
+
+This completes the headless toolset after the Range Advisor has landed:
+- `AuditWalletPositions` + CLI/API: wallet → per-position audit (fees reconciled with `COLLECT` events, IL realized, gas, vs HODL / 50-50 / intent benchmark; reclassified positions show both benchmarks — RN-01). Deterministic report (JSON + markdown). Audit target: `config/wallets.json`.
+- `SimulateChannel` (Module 3, `/channels/simulate`) — full series including breakouts; rejects incomplete breakout protocol (RN-04).
+- Integrated CLI/API flows: Range Advisor, replay, audit, channel, decision log, health.
+
+**Crivo:** LP-Audit runs end-to-end on the principal's real wallets; audit report is reproducible (same inputs → byte-identical, including hash); fee reconciliation differences explained or flagged (RN-06); channel simulator returns the full series including breakouts; all Phase 3 flows still green; `422` returned on insufficient data, never a guess. Tag `phase-4-done`.
 
 ## Phase 5 — VALUE VALIDATION GATE (GO/NO-GO — the crivo before any UI)
 
-No new features. Run the complete headless toolset on the principal's **real** history and real watchlist pools, and assemble an **Edge Evidence Dossier**:
+No new features. Run the complete headless toolset on real watchlist pools and the principal's **real** history, and assemble an **Edge Evidence Dossier**:
 
-1. **Audit retrospective:** does LP-Audit reveal something true and non-obvious — which positions/pools actually had edge, where the displayed APR fooled the principal, fees-vs-IL reality vs perception?
+1. **Range Advisor usefulness:** on real watchlist assets/pools, does the tool surface pool/range choices, IV-vs-RV context, liquidity crowding, and band-survival facts that the principal would not reliably see by eye?
 2. **Mechanism validation (category A):** do band-survival and IV-vs-RV, measured on real pools, **discriminate** good LP conditions from bad ones in a way a human could not eyeball? Show the distributions.
-3. **Estimate fidelity:** does `EstimateRangeApr` reconcile acceptably against realized fees and against Metrix? Document divergences.
-4. **Verdict sanity (honest framing):** on a handful of real past situations, does the `OPEN`/`DONT_OPEN` logic produce defensible calls? This is **descriptive sanity, not proof of edge** — verdict edge is only provable forward (Phase 8), and saying otherwise would be the in-sample self-deception RN-14 forbids.
+3. **Estimate fidelity:** does `EstimateRangeApr` reconcile acceptably against realized/simulated fees and against Metrix? Document divergences.
+4. **Audit retrospective:** does LP-Audit reveal something true and non-obvious — which positions/pools actually had edge, where the displayed APR fooled the principal, fees-vs-IL reality vs perception?
+5. **Verdict sanity (honest framing):** on a handful of real past situations, does the `OPEN`/`DONT_OPEN` logic produce defensible calls? This is **descriptive sanity, not proof of edge** — verdict edge is only provable forward (Phase 8), and saying otherwise would be the in-sample self-deception RN-14 forbids.
 
 **Crivo (judgment gate):** the analyst adjudicates the dossier against the discipline (blind-analysis honesty, no overfit claims); the **principal decides GO or NO-GO** to the question: *"Does this tool tell me something true and useful about my LP decisions that I could not see by eye?"*
 - **GO** → Phase 6 (frontend) is authorized.
@@ -92,4 +99,4 @@ The decision log audits itself on **new** data: verdicts recorded in normal use 
 - Fork descriptors (Camelot, Aerodrome) via `IDexProtocolRegistry`.
 - Postgres swap; real identity/multi-tenant (SaaS gate — principal's decision).
 - Dune adapter as alternative data source.
-- Optional web screen for UC-09 replay (CLI-first in v1).
+- Optional web screen for UC-09 replay (headless/API-first before Phase 5; web only after GO).

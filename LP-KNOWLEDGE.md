@@ -52,24 +52,27 @@ O principal pediu uma ferramenta de decisão com 4 capacidades. Parecer do quant
 
 ## 5. Os quatro módulos da ferramenta
 
-### Módulo 0 — LP-Audit (PRIMEIRO entregável; pré-requisito dos demais)
+### Módulo 0 — LP-Audit (calibração e auditoria, não a primeira prova de valor)
 
-Auditoria do histórico real do principal: para cada posição já operada — fees colhidas, IL realizado, resultado vs HODL, resultado vs benchmark de intenção (reconstruída a posteriori, com honestidade), custos de gas/rebalance. Responde com números: **o LP do último ano gerou edge positivo ou negativo, onde e por quê?** Calibra todos os módulos com dados proprietários, zero contaminação. Entrada necessária: endereços de carteira / lista de posições.
+Auditoria do histórico real do principal: para cada posição já operada — fees colhidas, IL realizado, resultado vs HODL, resultado vs benchmark de intenção (reconstruída a posteriori, com honestidade), custos de gas/rebalance. Responde com números: **o LP do último ano gerou edge positivo ou negativo, onde e por quê?** É valioso para detectar autoengano, calibrar suposições e confrontar o sistema contra dados proprietários, mas não é mais o primeiro entregável de valor do produto. Entrada necessária: endereços de carteira / lista de posições.
 
 ### Módulo 1 — Regime de volatilidade
 
 Por ativo: classificação RANGE / TRENDING / TRANSITION via vol realizada (percentil 30d vs histórico) e trendiness (eficiência de caminho / ADX-like). Simples, testável, alimenta o Módulo 2.
 
-### Módulo 2 — Range Intelligence (o coração)
+### Módulo 2 — Range Intelligence / Range Advisor (o coração e primeiro entregável de valor)
 
-Para range de largura W em torno do preço, condicionada ao regime:
+Para ativo, pool e range de largura W, condicionada ao regime:
 
+- comparação entre pools do ativo (fee tier, volume/TVL, IV do pool, liquidez concorrente);
+- geração de bandas candidatas por grade pré-declarada (ex.: larguras fixas em torno do preço ou single-sided coerentes com a intenção), ranqueadas por evidência, não por otimização retrospectiva;
 - distribuição empírica de tempo-até-sair (curvas de sobrevivência da range);
 - fee APR esperada dentro da range (volume do pool, TVL concentrado na faixa, fee tier);
+- IV do pool vs RV/vol prevista do ativo (o pool está pagando caro ou barato pela vol vendida);
 - IL esperado nos cenários de saída (por cima / por baixo);
 - **veredito: OPEN / DON'T OPEN**, com expectancy líquida = fees esperadas no horizonte provável − custo esperado de saída.
 
-Proibido: saída do tipo "fica neste range por X meses".
+Proibido: saída do tipo "fica neste range por X meses" ou "este backtest prova edge". O replay histórico aqui é descritivo: mede sobrevivência de bandas, IV vs RV e reconciliação de fee APR para aconselhar ranges/pools com evidência, sem otimizar limiares contra o passado.
 
 ### Módulo 3 — Channel Machine com protocolo de breakout
 
@@ -122,10 +125,12 @@ Ressalvas registradas: endpoint do hosted service do The Graph foi descontinuado
 
 ## 9. Sequência de entrega
 
-1. **Módulo 0 — LP-Audit** ← começa aqui; bloqueado aguardando endereços de carteira do principal.
-2. Módulo 1 — regime de vol.
-3. Módulo 2 — range intelligence (OPEN/DON'T OPEN).
-4. Módulo 3 — channel machine.
+Decisão de produto atualizada em 2026-06-15: o primeiro "valeu a pena construir" deve ser o sistema aconselhar pools/ranges com evidência histórica e fundamentos de LP, antes de auditar o histórico pessoal do principal. O audit continua importante, mas entra como calibração/validação posterior, não como porta de entrada.
+
+1. Fundamento matemático e dados mínimos confiáveis.
+2. **Módulo 1 + Módulo 2 — Range Advisor / Range Intelligence**: regime, pools do ativo, IV vs RV, sobrevivência de bandas, fee APR, IL esperado e verdict OPEN/DON'T OPEN.
+3. Módulo 3 — channel machine com replay completo e protocolo de breakout.
+4. Módulo 0 — LP-Audit para calibrar e confrontar o sistema com o histórico real do principal.
 
 ## 10. Glossário mínimo
 

@@ -38,9 +38,11 @@ Authored 2026-06-14. The agreed shape of the HTTP API. The **living contract** i
 
 `GET /v1/pools/{poolId}` → pool detail incl. latest snapshot + tick liquidity distribution.
 
-### Range APR & verdict (UC-03, Module 2)
+### Range candidates, APR & verdict (UC-03, Module 2 / Range Advisor)
 
 `POST /v1/ranges/estimate-apr` — req `{ poolId, tickLower, tickUpper, capital }` → `{ feeAprWhileInRange, feeAprTimeAdjusted, volumeSensitivity:{ d7, d30 }, selfDilutionApplied:true }`. Honest APR building block (no IL side here — UI never shows this alone, FSD).
+
+`POST /v1/ranges/candidates` — req `{ poolId, intent, capital?, candidateGrid?:{ widthsPct[], placementMode }, window }` → `{ candidates:[{ tickLower, tickUpper, widthPct, placement, evidence:{ poolIv, forecastRv, feeApr, bandSurvival:{ medianDays, q25, q75 }, ilByExit:{ up, down }, competingLiquidity }, rationale[], dataSufficiency }] }`. Candidate grid is deterministic and predeclared; no optimizer, no threshold tuning, no claim that a historical rule "won".
 
 `POST /v1/ranges/evaluate` — req `{ poolId, tickLower, tickUpper, capital, intent }` → `{ verdict, expectancyNet, inputs:{ poolIv, forecastRv, feeApr, bandSurvival:{ medianDays, q25, q75 }, ilByExit:{ up, down }, regime }, decisionLogId, contentHash }`. Persists a `DecisionLogEntry` on every call (RN-03), even when the caller does not open. 422 if data insufficient (RN-02).
 
@@ -56,7 +58,7 @@ Authored 2026-06-14. The agreed shape of the HTTP API. The **living contract** i
 `GET /v1/decisions/{id}` → full entry (inputs + hash + annotations).
 `POST /v1/decisions/{id}/annotations` — req `{ text }` → appends a dated annotation (RN-03). The entry itself is immutable (409 on any edit attempt).
 
-### Audit (UC-01, Module 0)
+### Audit (UC-01, Module 0 / calibration)
 
 `POST /v1/audit/run` — req `{ walletId }` → `{ auditReportId }` (async if long; status via GET).
 `GET /v1/audit/{reportId}` → per-position + aggregate (fees, IL, gas, vs HODL/50-50/intent benchmark; reclassified positions show both benchmarks — RN-01).

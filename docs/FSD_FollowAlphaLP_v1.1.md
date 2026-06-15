@@ -18,12 +18,12 @@ Hierarquia em caso de conflito: regras de domínio/pesquisa (`LP-KNOWLEDGE.md`) 
 
 O FollowAlpha.LP é uma **ferramenta de apoio à decisão para provisão de liquidez concentrada** (Uniswap v3 e forks, Arbitrum e Base no dia 1). Ela transforma decisões de LP que hoje são tomadas "no olho" em decisões tomadas com números, e mantém um registro auditável de cada decisão recomendada.
 
-O usuário é um operador de LP (hoje: um único usuário, o principal). A pergunta central que o sistema responde, em quatro formas:
+O usuário é um operador de LP (hoje: um único usuário, o principal). A pergunta central que o sistema responde, em quatro formas, por prioridade de produto:
 
-1. **"Meu histórico de LP teve edge?"** (Auditoria)
-2. **"Este ativo está em modo amigável para LP agora?"** (Regime de volatilidade)
-3. **"Vale a pena abrir ESTA range NESTE pool com ESTA intenção?"** (Veredito OPEN/DON'T OPEN)
-4. **"Esta estratégia de canal sobrevive, incluindo os breakouts?"** (Simulador de canal)
+1. **"Qual pool/range faz sentido considerar agora, e por quê?"** (Range Advisor: regime, pools, IV vs RV, sobrevivência de bandas, fee APR, IL)
+2. **"O histórico sustenta esta largura de range / pool / fee tier?"** (Replay descritivo, sem otimização)
+3. **"Esta estratégia de canal sobrevive, incluindo os breakouts?"** (Simulador de canal)
+4. **"Meu histórico de LP teve edge?"** (Auditoria/calibração posterior)
 
 ### 1.2 O que o sistema NÃO é (fora de escopo, por decisão)
 
@@ -35,9 +35,10 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 
 ### 1.3 Critério de sucesso do produto
 
-1. O relatório de auditoria responde com números se o ano de LP do principal gerou valor vs alternativas honestas.
+1. O Range Advisor ajuda o principal a comparar ativos/pools/ranges com evidência que ele não obteria de forma confiável olhando apenas a UI do DEX: regime, IV vs RV, volume/TVL, liquidez concorrente, sobrevivência histórica de bandas, fee APR honesta e IL esperado.
 2. Toda abertura de pool do principal passa a ser precedida de um veredito registrado.
-3. Após ~6 meses de uso, o decision log permite julgar se os vereditos da ferramenta tiveram edge (a ferramenta audita a si mesma).
+3. O relatório de auditoria, quando executado, confronta o histórico do principal contra alternativas honestas e calibra o sistema.
+4. Após ~6 meses de uso, o decision log permite julgar se os vereditos da ferramenta tiveram edge (a ferramenta audita a si mesma).
 
 ---
 
@@ -58,7 +59,7 @@ O usuário é um operador de LP (hoje: um único usuário, o principal). A pergu
 
 ## 3. Casos de Uso e Fluxos
 
-### UC-01 — Auditar carteira (Módulo 0)
+### UC-01 — Auditar carteira (Módulo 0, calibração posterior)
 
 **Ator**: principal. **Pré-condição**: carteira registrada (`config/wallets.json`); eventos on-chain sincronizados.
 
@@ -90,15 +91,17 @@ Regra de exibição: a evidência numérica é sempre mostrada junto de qualquer
 
 **Fluxo principal**:
 
-1. Usuário chega com ativo e pool pré-selecionados vindos do funil (UC-02 → pools do ativo) — ou seleciona um pool diretamente por endereço —, define a range [Pa, Pb] e o capital, e **declara a intenção** (obrigatória).
-2. Sistema computa e exibe:
+1. Usuário chega com ativo e pool pré-selecionados vindos do funil (UC-02 → pools do ativo) — ou seleciona um pool diretamente por endereço —, informa capital opcional e **declara a intenção** (obrigatória).
+2. Sistema pode sugerir **range candidates** por uma grade determinística pré-declarada (ex.: larguras fixas e placements coerentes com a intenção), ranqueadas por evidência: IV vs RV, sobrevivência da banda, fee APR, IL esperado, liquidez concorrente e compatibilidade com a intenção. Isto não é otimização retrospectiva.
+3. Usuário escolhe uma candidata ou define manualmente a range [Pa, Pb].
+4. Sistema computa e exibe:
    - IV do pool (quanto de vol o pool está pagando) vs previsão de vol realizada — o sinal caro/barato;
    - fee APR esperada na range (volume recente, liquidez concorrente na faixa, fee tier);
    - distribuição empírica de tempo-até-sair da range no regime atual (mediana, quartis);
    - IL esperado nos cenários de saída (por cima / por baixo), traduzido pela intenção;
    - **expectancy líquida e o veredito: OPEN / DON'T OPEN**.
-3. Sistema grava o veredito + todos os inputs + hash no decision log (sempre, mesmo se o usuário não abrir a posição).
-4. Usuário decide e executa fora do sistema, se quiser.
+5. Sistema grava o veredito + todos os inputs + hash no decision log (sempre, mesmo se o usuário não abrir a posição).
+6. Usuário decide e executa fora do sistema, se quiser.
 
 **Fluxos alternativos**: dados insuficientes (pool sem histórico mínimo) → sistema recusa veredito e diz o que falta (nunca chuta); range incompatível com intenção (ex.: ACCUMULATE com range acima do preço) → erro de validação explicado.
 
@@ -145,9 +148,9 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 2. Quando o quadro atual diverge materialmente do quadro do veredito (ex.: regime mudou, IV caiu abaixo da vol prevista), a posição é sinalizada: **"as premissas do OPEN mudaram"** — com o quê mudou, lado a lado.
 3. A sinalização é informativa — fechar/manter é decisão do usuário; se tomada, pode ser registrada como anotação datada no decision log (RN-03).
 
-### UC-09 — Validação histórica / Replay (adicionado 2026-06-14)
+### UC-09 — Validação histórica / Replay (adicionado 2026-06-14; promovido em 2026-06-15)
 
-Propósito: **calibrar e validar os inputs** que alimentam o verdict, com replay determinístico LP-native sobre dados históricos. NÃO é uma tela de "minha regra ganha" — é análise descritiva de mecanismo. Não é porta de entrada do produto; é tela/comando de análise.
+Propósito: **calibrar e validar os inputs** que alimentam o verdict, com replay determinístico LP-native sobre dados históricos. NÃO é uma tela de "minha regra ganha" — é análise descritiva de mecanismo. Pela decisão de produto de 2026-06-15, o replay descritivo é parte do primeiro valor do Range Advisor: antes de auditar o histórico pessoal, o sistema deve ajudar a responder se uma largura de range, pool e fee tier fazem sentido historicamente.
 
 Escopo permitido (descritivo — categoria A):
 1. **Sobrevivência de range**: distribuição empírica de tempo-dentro de bandas de largura W por regime ("±10% em ETH neste regime durou mediana N dias, quartis A/B").
@@ -182,7 +185,7 @@ Fora de escopo da v1 (categoria B — avaliação de edge do verdict): "OPEN ter
 
 ## 5. Requisitos de Interface (UI/UX)
 
-Interface alvo: web (Next.js) consumindo a API; CLI cobre as Fases 1-3. Princípio geral de UX: **números antes de rótulos, inputs sempre visíveis, nada de "confie em mim"**.
+Interface alvo: web (Next.js) consumindo a API; antes do GO de valor, API/CLI cobrem as Fases 1-4 em modo headless. Princípio geral de UX: **números antes de rótulos, inputs sempre visíveis, nada de "confie em mim"**.
 
 ### Tela 1 — Dashboard & Monitor pós-OPEN (UC-08)
 - Posições abertas: valor, **fees acumuladas vs IL acumulado**, distância do preço às bordas da range, e o status das premissas do veredito original (mantidas / mudaram — com o quê mudou).
@@ -215,7 +218,7 @@ Lista filtrável; entrada expandida mostra inputs completos e hash. Imutável po
 Carteiras, watchlist, intents pendentes de declaração, **regras de alerta e canal de notificação (UC-07)**, status de coleta. Sem campos de chave privada — por desenho, não por esquecimento.
 
 ### Tela 9 — Validação histórica / Replay (UC-09)
-CLI-first na v1 (comando de análise); tela web opcional/posterior. Saídas: curvas de sobrevivência de banda por regime, relação IV-vs-RV (descritiva), reconciliação fee APR estimada-vs-realizada, sensibilidade 7d/30d. Exibe explicitamente "calibração de inputs, não prova de edge" e sinaliza quando faltam dados (RN-14). Nunca mostra "OPEN ganhou X% no histórico" como prova de edge.
+Headless/API-first antes do value gate; tela web somente após GO. Saídas: curvas de sobrevivência de banda por regime, relação IV-vs-RV (descritiva), reconciliação fee APR estimada-vs-realizada, sensibilidade 7d/30d. Exibe explicitamente "calibração de inputs, não prova de edge" e sinaliza quando faltam dados (RN-14). Nunca mostra "OPEN ganhou X% no histórico" como prova de edge.
 
 ---
 
@@ -243,3 +246,4 @@ Decisões de alinhamento que produziram a v1.1 (todas do principal, 2026-06-12):
 3. RN-01 relaxada: reclassificação de intenção permitida com trilha completa e duplo benchmark.
 4. RN-03 estendida: anotações datadas append-only sobre vereditos.
 5. UC-07 (Alertas) e UC-08 (Monitor pós-OPEN) adicionados; Tela 1 vira Dashboard & Monitor.
+6. Atualização de prioridade (2026-06-15): o primeiro critério de valor passa a ser Range Advisor + replay descritivo para aconselhar pools/ranges antes do LP-Audit. LP-Audit permanece no escopo, mas como calibração e auditoria posterior.
