@@ -11,12 +11,22 @@ public static class TrendinessEstimator
     /// <summary>The efficiency ratio of the price series, in [0, 1].</summary>
     /// <exception cref="ArgumentNullException"><paramref name="prices"/> is null.</exception>
     /// <exception cref="ArgumentException">Fewer than 2 prices.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">A price is not strictly positive.</exception>
     public static decimal PathEfficiency(IReadOnlyList<decimal> prices)
     {
         ArgumentNullException.ThrowIfNull(prices);
         if (prices.Count < 2)
         {
             throw new ArgumentException("At least 2 prices are required.", nameof(prices));
+        }
+
+        // Market prices must be strictly positive; fail closed on invalid data (as RealizedVolEstimator does).
+        foreach (var price in prices)
+        {
+            if (price <= 0m)
+            {
+                throw new ArgumentOutOfRangeException(nameof(prices), "Prices must be strictly positive.");
+            }
         }
 
         var netMovement = Math.Abs(prices[^1] - prices[0]);

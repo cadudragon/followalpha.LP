@@ -38,4 +38,13 @@ public class TrendinessTests
         var act = () => TrendinessEstimator.PathEfficiency([100m]);
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Rejects_non_positive_prices()
+    {
+        var zero = () => TrendinessEstimator.PathEfficiency([100m, 0m, 50m]);
+        var negative = () => TrendinessEstimator.PathEfficiency([100m, -1m]);
+        zero.Should().Throw<ArgumentOutOfRangeException>();
+        negative.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

@@ -22,8 +22,12 @@ public readonly record struct BandSurvival
     /// <summary>Number of observed (uncensored) exits.</summary>
     public int ObservedCount => _sortedTimesToExit?.Length ?? 0;
 
-    /// <summary>The observed times-to-exit (steps), ascending.</summary>
-    public IReadOnlyList<int> TimesToExit => _sortedTimesToExit ?? [];
+    /// <summary>
+    /// The observed times-to-exit (steps), ascending. Returned as a read-only wrapper over the backing
+    /// array, not the array itself — a caller cannot cast it back to <c>int[]</c> and mutate the
+    /// distribution (which would change <see cref="Median"/>/<see cref="Quantile"/>).
+    /// </summary>
+    public IReadOnlyList<int> TimesToExit => Array.AsReadOnly(_sortedTimesToExit ?? []);
 
     /// <summary>The median observed time-to-exit (steps).</summary>
     public decimal Median() => Quantile(0.5m);

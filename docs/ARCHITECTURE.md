@@ -81,6 +81,8 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 - **Secondary — `UniformBaseByPrice`**: equal base (token0) per level → average fill = the **arithmetic mean** `(a+b)/2`. A sensitivity perspective only, not a substitute.
 - Rejected: defining the benchmark as the AMM's own fee-less profile (edge would be fees only — not an independent alternative, contrary to `LP-KNOWLEDGE.md` §3/§6.2).
 
+**Benchmark identity (decided 2026-06-15 — binding).** A benchmark's identity is a `BenchmarkSpec`, not a bare category: for `Hodl`/`FiftyFifty` the kind is enough, but for a limit order the identity is **kind + side + ladder** (`LimitOrder/Accumulate/UniformQuoteByPrice`, `…/Accumulate/UniformBaseByPrice`, `…/Distribute/UniformQuoteByPrice`, `…/Distribute/UniformBaseByPrice`). `IntentBenchmarks.For(intent)` returns the full specs (Harvest → Hodl + FiftyFifty; Accumulate/Distribute → their two limit-order specs, primary then secondary). `IntentBenchmarks.For(history)` is the union over distinct intents, **deduplicated by full spec** in first-seen order — so a reclassification `Accumulate → Distribute` preserves four distinct limit-order perspectives, never collapsing them to one.
+
 ### 4.4 Pricing & signals (pure functions; data arrives as inputs)
 - `ImpliedVolCalculator`: `IV = 2·fee·sqrt(dailyVolume / tickTvl)·sqrt(365)`.
 - `RealizedVolEstimator`, `TrendinessEstimator` (path-efficiency / ADX-like) — pure given a price series.
@@ -88,6 +90,13 @@ Pure, deterministic, immutable, fully unit-tested. Contents:
 - `FeeShareEstimator`: expected fee APR given band, own L, in-range liquidity distribution, recent volume.
 - `RangeVerdictCalculator`: combines the above into `Verdict { Open | DoNotOpen }` + full input snapshot (for the decision log).
 - `ChannelSimulator`: given `ChannelPolicy` (range, reopen rules, max reopens, no-reopen floor, capital cap) and a price/fee series → full event/PnL series **including breakouts**.
+
+**Estimator modelling choices (1.4 — declared before results, `LP-KNOWLEDGE.md` §6.1; thresholds are NOT set here, no tuning to results).**
+- **Realized vol**: sample standard deviation (÷ n−1) of close-to-close **log returns**, annualized by `·sqrt(periodsPerYear)`.
+- **Trendiness**: Kaufman **efficiency ratio** (net displacement ÷ path length, in [0,1]); direction is never emitted (RN-07). ADX is a deferred alternative.
+- **Band survival**: a **relative arithmetic** band `[p·(1−W), p·(1+W)]` centred on each entry, **overlapping** windows (every entry is a start), exit = strictly outside (bounds inclusive); entries that never exit are **right-censored** and reported, quantiles are over observed exits (a Kaplan–Meier survival curve is deferred).
+- **Fee share**: `ownL / inRangeL` (own is included → adding liquidity dilutes); the APR is **while-in-range** (the band-survival time adjustment is applied by the caller, not the estimator).
+- All estimators **fail closed** on invalid market data: prices must be strictly positive, and the inputs are validated up front.
 
 ## 5. Application
 

@@ -27,17 +27,21 @@ public static class BandSurvivalEstimator
             throw new ArgumentOutOfRangeException(nameof(widthFraction), widthFraction, "Width must be in (0, 1).");
         }
 
+        // Validate the whole series up front: a non-positive future price is invalid data, not an exit.
+        foreach (var price in prices)
+        {
+            if (price <= 0m)
+            {
+                throw new ArgumentOutOfRangeException(nameof(prices), "Prices must be strictly positive.");
+            }
+        }
+
         var exits = new List<int>();
         var censored = 0;
 
         for (var start = 0; start < prices.Count - 1; start++)
         {
             var anchor = prices[start];
-            if (anchor <= 0m)
-            {
-                throw new ArgumentOutOfRangeException(nameof(prices), "Prices must be strictly positive.");
-            }
-
             var lower = anchor * (1m - widthFraction);
             var upper = anchor * (1m + widthFraction);
 

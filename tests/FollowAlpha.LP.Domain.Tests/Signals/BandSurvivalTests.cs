@@ -59,4 +59,29 @@ public class BandSurvivalTests
         var act = () => BandSurvivalEstimator.ForWidth([100m], 0.05m);
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Times_to_exit_cannot_be_cast_to_a_mutable_array()
+    {
+        var survival = BandSurvivalEstimator.ForWidth([100m, 105m, 110m, 90m], 0.05m);
+
+        // The exposed list must not be the backing int[] — casting it back must fail, so a caller
+        // cannot mutate the samples and corrupt the quantiles.
+        (survival.TimesToExit as int[]).Should().BeNull();
+        survival.Median().Should().Be(2m); // unchanged and re-readable
+    }
+
+    [Fact]
+    public void Rejects_zero_future_price_as_invalid_data_not_an_exit()
+    {
+        var act = () => BandSurvivalEstimator.ForWidth([100m, 0m], 0.05m);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Rejects_negative_future_price()
+    {
+        var act = () => BandSurvivalEstimator.ForWidth([100m, -1m], 0.05m);
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }
