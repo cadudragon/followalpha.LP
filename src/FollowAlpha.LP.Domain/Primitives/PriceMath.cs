@@ -182,6 +182,60 @@ public static class PriceMath
         return guess;
     }
 
+    /// <summary>
+    /// Deterministic decimal natural logarithm. Range-reduces by factors of 2 into a neighbourhood of 1,
+    /// then sums the <c>atanh</c> series <c>2·Σ t^(2k+1)/(2k+1)</c> with <c>t = (x−1)/(x+1)</c>. Pure
+    /// decimal, hence reproducible across platforms (NFR D1). Used by the log-mean limit-order benchmark.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> is not strictly positive.</exception>
+    public static decimal Ln(decimal value)
+    {
+        if (value <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "Logarithm is defined only for strictly positive values.");
+        }
+
+        var k = 0;
+        while (value > 1.5m)
+        {
+            value /= 2m;
+            k++;
+        }
+
+        while (value < 0.75m)
+        {
+            value *= 2m;
+            k--;
+        }
+
+        var t = (value - 1m) / (value + 1m);
+        var tSquared = t * t;
+        var term = t;
+        var sum = 0m;
+        var denominator = 1;
+        while (true)
+        {
+            var next = sum + term / denominator;
+            if (next == sum)
+            {
+                break;
+            }
+
+            sum = next;
+            term *= tSquared;
+            denominator += 2;
+            if (denominator > 9999)
+            {
+                break;
+            }
+        }
+
+        return 2m * sum + k * Ln2;
+    }
+
+    /// <summary>ln(2) to decimal precision (range-reduction constant for <see cref="Ln"/>).</summary>
+    private const decimal Ln2 = 0.6931471805599453094172321215m;
+
     /// <summary>Integer exponentiation by squaring in decimal. <paramref name="exponent"/> must be ≥ 0.</summary>
     private static decimal PowInt(decimal value, int exponent)
     {
