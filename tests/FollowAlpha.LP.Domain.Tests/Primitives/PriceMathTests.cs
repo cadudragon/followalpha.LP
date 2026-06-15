@@ -8,7 +8,6 @@ namespace FollowAlpha.LP.Domain.Tests.Primitives;
 
 public class PriceMathTests
 {
-    // The canonical Q96 constant (2^96), the fixed-point scale of sqrtPriceX96.
     private static readonly BigInteger Q96Literal = BigInteger.Parse("79228162514264337593543950336", CultureInfo.InvariantCulture);
 
     [Fact]
@@ -17,80 +16,88 @@ public class PriceMathTests
         PriceMath.Q96.Should().Be(Q96Literal);
     }
 
-    // ---- tick -> price (reference points) ----
+    // ---- tick -> decimal pool price (analytics view) ----
 
     [Fact]
     public void Tick_zero_is_price_one()
     {
-        PriceMath.TickToPrice(0).Should().Be(1m);
+        PriceMath.TickToPoolPrice(0).Should().Be(1m);
     }
 
     [Fact]
     public void Tick_one_is_the_base()
     {
-        PriceMath.TickToPrice(1).Should().Be(1.0001m);
+        PriceMath.TickToPoolPrice(1).Should().Be(1.0001m);
     }
 
     [Fact]
     public void Negative_tick_is_the_reciprocal_of_the_base()
     {
-        PriceMath.TickToPrice(-1).Should().Be(1m / 1.0001m);
+        PriceMath.TickToPoolPrice(-1).Should().Be(1m / 1.0001m);
     }
 
     [Theory]
     [InlineData(-100000)]
-    [InlineData(-5000)]
     [InlineData(-1)]
     [InlineData(0)]
     [InlineData(1)]
-    [InlineData(5000)]
     [InlineData(100000)]
-    public void Tick_to_price_is_strictly_monotonic(int tick)
+    public void Tick_to_pool_price_is_strictly_monotonic(int tick)
     {
-        PriceMath.TickToPrice(tick + 1).Should().BeGreaterThan(PriceMath.TickToPrice(tick));
+        PriceMath.TickToPoolPrice(tick + 1).Should().BeGreaterThan(PriceMath.TickToPoolPrice(tick));
     }
 
     [Fact]
-    public void Tick_to_price_throws_outside_the_valid_range()
+    public void Tick_to_pool_price_throws_outside_the_valid_tick_range()
     {
-        var act = () => PriceMath.TickToPrice(PriceMath.MaxTick + 1);
+        var act = () => PriceMath.TickToPoolPrice(PriceMath.MaxTick + 1);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
-    public void Tick_to_price_overflows_at_the_extreme_tail_of_the_decimal_window()
+    public void Tick_to_pool_price_throws_a_domain_exception_outside_the_decimal_window()
     {
-        // Documents the analytics-grade decimal boundary: the extreme Uniswap ticks have prices outside
-        // the decimal magnitude window and throw by design (no real asset reaches them).
-        var act = () => PriceMath.TickToPrice(PriceMath.MaxTick);
-        act.Should().Throw<OverflowException>();
+        // Full Uniswap range is valid for the raw types; the analytics decimal view is what is bounded.
+        var high = () => PriceMath.TickToPoolPrice(PriceMath.MaxTick);
+        var low = () => PriceMath.TickToPoolPrice(PriceMath.MinTick);
+        high.Should().Throw<PriceOutsideDecimalRangeException>();
+        low.Should().Throw<PriceOutsideDecimalRangeException>();
     }
 
-    // ---- price -> tick (floor invariant + verified guard) ----
+    // ---- decimal pool price -> tick (floor invariant + verified guard) ----
 
     [Theory]
     [InlineData("1")]
     [InlineData("1.5")]
     [InlineData("0.5")]
-    [InlineData("2000")]
-    [InlineData("1234.5678")]
-    [InlineData("0.0009")]
-    public void Price_to_tick_satisfies_the_floor_invariant(string priceText)
+    [InlineData("500000000")]
+    [InlineData("0.0000000002")]
+    public void Pool_price_to_tick_satisfies_the_floor_invariant(string priceText)
     {
-        var price = decimal.Parse(priceText, System.Globalization.CultureInfo.InvariantCulture);
+        var price = decimal.Parse(priceText, CultureInfo.InvariantCulture);
 
-        var tick = PriceMath.PriceToTick(price);
+        var tick = PriceMath.PoolPriceToTick(price);
 
-        PriceMath.TickToPrice(tick).Should().BeLessThanOrEqualTo(price);
-        PriceMath.TickToPrice(tick + 1).Should().BeGreaterThan(price);
+        PriceMath.TickToPoolPrice(tick).Should().BeLessThanOrEqualTo(price);
+        PriceMath.TickToPoolPrice(tick + 1).Should().BeGreaterThan(price);
     }
 
     [Fact]
-    public void Price_exactly_on_a_tick_maps_to_that_tick()
+    public void Dense_sweep_round_trips_every_tick_through_its_price()
     {
-        foreach (var t in new[] { -5000, -1, 0, 1, 100, 5000 })
+        // Thousands of real boundaries: a raw floor(log/log) would mis-round at some of these; the
+        // verified ±1 guard must hold the exact invariant everywhere.
+        for (var t = -5000; t <= 5000; t++)
         {
-            PriceMath.PriceToTick(PriceMath.TickToPrice(t)).Should().Be(t);
+            PriceMath.PoolPriceToTick(PriceMath.TickToPoolPrice(t)).Should().Be(t);
+        }
+
+        // Wider, sampled, inside the analytics window where decimal keeps enough significant digits
+        // (±300k comfortably covers real pools — e.g. USDC/WETH sits near ±200k). Far below that the
+        // raw price magnitude (~1e-27) collapses decimal precision; that tail is analytics-only.
+        for (var t = -300000; t <= 300000; t += 997)
+        {
+            PriceMath.PoolPriceToTick(PriceMath.TickToPoolPrice(t)).Should().Be(t);
         }
     }
 
@@ -98,63 +105,28 @@ public class PriceMathTests
     public void Price_just_below_a_tick_boundary_floors_to_the_tick_below()
     {
         const int t = 100;
-        var boundary = PriceMath.TickToPrice(t);
-
-        // A hair below the boundary, but still above tick t-1: the verified ±1 guard must return t-1,
-        // never the raw floor(log/log) which floating error can place on the wrong side.
+        var boundary = PriceMath.TickToPoolPrice(t);
         var justBelow = boundary - boundary * 0.00001m;
 
-        PriceMath.PriceToTick(boundary).Should().Be(t);
-        PriceMath.PriceToTick(justBelow).Should().Be(t - 1);
+        PriceMath.PoolPriceToTick(boundary).Should().Be(t);
+        PriceMath.PoolPriceToTick(justBelow).Should().Be(t - 1);
     }
 
     [Fact]
-    public void Price_to_tick_rejects_non_positive_prices()
+    public void Pool_price_to_tick_rejects_non_positive_prices()
     {
-        var actZero = () => PriceMath.PriceToTick(0m);
-        var actNeg = () => PriceMath.PriceToTick(-1m);
-        actZero.Should().Throw<ArgumentOutOfRangeException>();
-        actNeg.Should().Throw<ArgumentOutOfRangeException>();
+        var zero = () => PriceMath.PoolPriceToTick(0m);
+        var neg = () => PriceMath.PoolPriceToTick(-1m);
+        zero.Should().Throw<ArgumentOutOfRangeException>();
+        neg.Should().Throw<ArgumentOutOfRangeException>();
     }
 
-    // ---- sqrt-price (reference points + round trips) ----
-
-    [Fact]
-    public void Price_one_maps_to_Q96()
-    {
-        PriceMath.PriceToSqrtPriceX96(1m).Should().Be(Q96Literal);
-    }
-
-    [Fact]
-    public void Tick_zero_maps_to_Q96()
-    {
-        PriceMath.TickToSqrtPriceX96(0).Should().Be(Q96Literal);
-    }
+    // ---- sqrtPriceX96 (analytics decimal view) ----
 
     [Fact]
     public void Q96_maps_back_to_price_one()
     {
-        PriceMath.SqrtPriceX96ToPrice(Q96Literal).Should().Be(1m);
-    }
-
-    [Fact]
-    public void Q96_maps_back_to_tick_zero()
-    {
-        PriceMath.SqrtPriceX96ToTick(Q96Literal).Should().Be(0);
-    }
-
-    [Theory]
-    [InlineData("1")]
-    [InlineData("0.5")]
-    [InlineData("2000")]
-    [InlineData("0.0025")]
-    public void Price_round_trips_through_sqrt_price_within_tolerance(string priceText)
-    {
-        var price = decimal.Parse(priceText, System.Globalization.CultureInfo.InvariantCulture);
-
-        var roundTripped = PriceMath.SqrtPriceX96ToPrice(PriceMath.PriceToSqrtPriceX96(price));
-
-        roundTripped.Should().BeApproximately(price, price * PriceMath.SqrtRoundTripRelativeTolerance);
+        PriceMath.SqrtPriceX96ToPoolPrice(Q96Literal).Should().Be(1m);
     }
 
     [Theory]
@@ -163,43 +135,51 @@ public class PriceMathTests
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(50000)]
-    public void Tick_round_trips_to_sqrt_price_and_back_to_a_price_within_tolerance(int tick)
+    public void Sqrt_ratio_decimal_view_matches_the_geometric_price_within_tolerance(int tick)
     {
-        var expected = PriceMath.TickToPrice(tick);
+        var expected = PriceMath.TickToPoolPrice(tick);
+        var fromSqrt = PriceMath.SqrtPriceX96ToPoolPrice(TickMath.GetSqrtRatioAtTick(tick));
 
-        var roundTripped = PriceMath.SqrtPriceX96ToPrice(PriceMath.TickToSqrtPriceX96(tick));
-
-        roundTripped.Should().BeApproximately(expected, expected * PriceMath.SqrtRoundTripRelativeTolerance);
+        fromSqrt.Should().BeApproximately(expected, expected * PriceMath.SqrtRoundTripRelativeTolerance);
     }
 
     [Fact]
-    public void Sqrt_price_conversions_reject_non_positive_values()
+    public void Sqrt_price_decimal_view_rejects_non_positive_values()
     {
-        var actPrice = () => PriceMath.PriceToSqrtPriceX96(0m);
-        var actSqrt = () => PriceMath.SqrtPriceX96ToPrice(BigInteger.Zero);
-        actPrice.Should().Throw<ArgumentOutOfRangeException>();
-        actSqrt.Should().Throw<ArgumentOutOfRangeException>();
-    }
-
-    // ---- decimal sqrt ----
-
-    [Theory]
-    [InlineData("0", "0")]
-    [InlineData("1", "1")]
-    [InlineData("4", "2")]
-    [InlineData("2", "1.4142135623730950488016887242")]
-    public void Sqrt_computes_decimal_square_roots(string input, string expected)
-    {
-        var x = decimal.Parse(input, System.Globalization.CultureInfo.InvariantCulture);
-        var exp = decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture);
-
-        PriceMath.Sqrt(x).Should().BeApproximately(exp, 1e-20m);
-    }
-
-    [Fact]
-    public void Sqrt_rejects_negative_input()
-    {
-        var act = () => PriceMath.Sqrt(-1m);
+        var act = () => PriceMath.SqrtPriceX96ToPoolPrice(BigInteger.Zero);
         act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    // ---- decimal scaling ----
+
+    [Fact]
+    public void Canonical_human_to_raw_applies_the_decimal_factor()
+    {
+        // USDC(6)/WETH(18): canonical human 0.0005 -> raw 0.0005 * 10^12 = 5e8.
+        var decimals = new TokenDecimals(6, 18);
+        PriceMath.CanonicalHumanToRawPrice(0.0005m, decimals).Should().Be(500_000_000m);
+    }
+
+    [Fact]
+    public void Raw_to_canonical_human_is_the_inverse_scaling()
+    {
+        var decimals = new TokenDecimals(6, 18);
+        PriceMath.RawPriceToCanonicalHuman(500_000_000m, decimals).Should().Be(0.0005m);
+    }
+
+    [Fact]
+    public void Equal_decimals_make_scaling_a_no_op()
+    {
+        var decimals = new TokenDecimals(18, 18);
+        PriceMath.CanonicalHumanToRawPrice(2000m, decimals).Should().Be(2000m);
+        PriceMath.RawPriceToCanonicalHuman(2000m, decimals).Should().Be(2000m);
+    }
+
+    [Fact]
+    public void Scaling_round_trips()
+    {
+        var decimals = new TokenDecimals(8, 6); // dec1 < dec0
+        var raw = PriceMath.CanonicalHumanToRawPrice(1234.5m, decimals);
+        PriceMath.RawPriceToCanonicalHuman(raw, decimals).Should().Be(1234.5m);
     }
 }

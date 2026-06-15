@@ -22,35 +22,33 @@ public class TickTests
     }
 
     [Fact]
-    public void Min_and_Max_expose_the_uniswap_bounds()
+    public void Min_and_max_expose_the_uniswap_bounds()
     {
-        Tick.Min.Value.Should().Be(PriceMath.MinTick);
-        Tick.Max.Value.Should().Be(PriceMath.MaxTick);
+        Tick.Min.Value.Should().Be(TickMath.MinTick);
+        Tick.Max.Value.Should().Be(TickMath.MaxTick);
     }
 
     [Fact]
-    public void To_price_returns_a_canonical_price()
+    public void To_sqrt_price_is_exact_at_tick_zero()
     {
-        var price = new Tick(0).ToPrice();
-        price.Value.Should().Be(1m);
-        price.Orientation.Should().Be(PriceOrientation.Token1PerToken0);
+        new Tick(0).ToSqrtPriceX96().Value.Should().Be(PriceMath.Q96);
     }
 
     [Theory]
-    [InlineData(-5000)]
-    [InlineData(-1)]
+    [InlineData(-100000)]
+    [InlineData(-60)]
     [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(5000)]
-    public void Tick_round_trips_through_price(int tick)
+    [InlineData(60)]
+    [InlineData(100000)]
+    public void Tick_round_trips_through_exact_sqrt_price(int tick)
     {
-        new Tick(tick).ToPrice().ToTick().Value.Should().Be(tick);
+        new Tick(tick).ToSqrtPriceX96().ToTick().Value.Should().Be(tick);
     }
 
     [Fact]
-    public void To_sqrt_price_matches_the_math_core()
+    public void To_pool_price_returns_the_analytics_view()
     {
-        new Tick(0).ToSqrtPriceX96().Value.Should().Be(PriceMath.Q96);
+        new Tick(0).ToPoolPrice().RawToken1PerToken0.Should().Be(1m);
     }
 
     [Fact]

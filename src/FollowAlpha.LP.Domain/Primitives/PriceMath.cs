@@ -3,104 +3,99 @@ using System.Numerics;
 namespace FollowAlpha.LP.Domain.Primitives;
 
 /// <summary>
-/// The single home for every raw-integer ↔ decimal conversion in the Domain and for the
-/// precision policy that governs them (ARCHITECTURE.md §4.1). Nothing else in the kernel may
-/// re-implement tick/price/sqrt-price math: it all routes through here so precision lives in one place.
+/// The single home for the <b>analytics decimal view</b> and the precision policy around it. The exact
+/// raw integer engine for <c>Tick ↔ SqrtPriceX96</c> lives in <see cref="TickMath"/>; this class covers
+/// the decimal side that downstream analytics use, and the human↔raw decimal scaling (ARCHITECTURE.md §4.1).
 ///
 /// <para><b>Precision policy.</b></para>
 /// <list type="bullet">
-///   <item><b>Types.</b> Human-scale prices are <see cref="decimal"/> (analytics-grade, ARCHITECTURE §4.1).
-///   Raw on-chain integers — <c>sqrtPriceX96</c> (Q64.96), liquidity, token base units — are
-///   <see cref="BigInteger"/>. Ticks are <see cref="int"/>.</item>
-///   <item><b>Determinism (NFR D1).</b> Final values are produced by <see cref="decimal"/> and
-///   <see cref="BigInteger"/> arithmetic only — both bit-for-bit reproducible across platforms.
-///   <see cref="Math"/> (double) is used <i>only</i> to seed an estimate that is then corrected by an
-///   exact integer/decimal invariant, so the returned value never depends on double rounding.</item>
-///   <item><b>tick → price.</b> <c>price = 1.0001^tick</c> computed by integer exponentiation-by-squaring
-///   in <see cref="decimal"/> (no <see cref="Math.Pow(double,double)"/>): deterministic and exact to
-///   decimal precision.</item>
-///   <item><b>price → tick.</b> Uniswap v3 <c>TickMath.getTickAtSqrtRatio</c> semantics: the greatest
-///   tick whose price ≤ the given price (floor in tick space), with the verified invariant
-///   <c>TickToPrice(tick) &lt;= price &lt; TickToPrice(tick+1)</c>. A double log seeds the candidate;
-///   the candidate is then corrected ±1 against the exact decimal invariant (the Uniswap guard step) —
-///   never a raw <c>floor(log/log)</c>.</item>
-///   <item><b>sqrt-price.</b> Square root via deterministic decimal Newton iteration; the
-///   multiply/divide by 2^96 is done in <see cref="BigInteger"/> so it never overflows
-///   <see cref="decimal"/>. A fixed-point scale of 10^<see cref="SqrtPriceScaleDigits"/> carries the
-///   fractional sqrt-price through the integer step.</item>
-///   <item><b>Range window.</b> "Analytics-grade decimal" means the representable magnitude window of
-///   <see cref="decimal"/> (~1e-28 … 7.9e28). Prices outside it — i.e. ticks past roughly ±6.6e5, which
-///   no real asset reaches — overflow by design and throw <see cref="OverflowException"/>. The Uniswap
-///   tick range <see cref="MinTick"/>..<see cref="MaxTick"/> is the validation range for the
-///   <see cref="Tick"/> type; the extreme tail is intentionally out of the supported price window.</item>
+///   <item><b>Separation.</b> Raw/on-chain/canonical values are integers (<see cref="Tick"/>,
+///   <see cref="SqrtPriceX96"/>) and exact (<see cref="TickMath"/>). The decimal pool price
+///   (<c>1.0001^tick</c>) and human price are <b>analytics-grade</b> views — never used where the raw
+///   on-chain integer is required.</item>
+///   <item><b>tick → decimal pool price.</b> <c>1.0001^tick</c> via integer exponentiation-by-squaring
+///   in <see cref="decimal"/> (deterministic; no <see cref="Math.Pow(double,double)"/>). Outside the
+///   representable decimal window it throws <see cref="PriceOutsideDecimalRangeException"/>.</item>
+///   <item><b>decimal pool price → tick.</b> Uniswap floor semantics with a verified ±1 guard against
+///   the exact decimal invariant <c>TickToPoolPrice(t) &lt;= price &lt; TickToPoolPrice(t+1)</c>. A
+///   double log only seeds the candidate; the returned integer never depends on its rounding.</item>
+///   <item><b>decimal scaling.</b> <c>P_raw = P_human(token1/token0) · 10^(dec1 − dec0)</c>, all in this
+///   one location.</item>
 /// </list>
-/// Tolerances for the kernel's golden tests are defined with those tests (item 1.2). The constants here
-/// (<see cref="SqrtRoundTripRelativeTolerance"/>) document the tolerance used by the primitives' own
-/// round-trip unit tests, which is the only place tolerance is needed at this layer.
 /// </summary>
 public static class PriceMath
 {
     /// <summary>The tick base: <c>price = TickBase^tick</c>.</summary>
     public const decimal TickBase = 1.0001m;
 
-    /// <summary>Minimum tick (Uniswap v3 <c>TickMath.MIN_TICK</c>).</summary>
-    public const int MinTick = -887272;
+    /// <summary>Minimum tick (mirrors <see cref="TickMath.MinTick"/>).</summary>
+    public const int MinTick = TickMath.MinTick;
 
-    /// <summary>Maximum tick (Uniswap v3 <c>TickMath.MAX_TICK</c>).</summary>
-    public const int MaxTick = 887272;
+    /// <summary>Maximum tick (mirrors <see cref="TickMath.MaxTick"/>).</summary>
+    public const int MaxTick = TickMath.MaxTick;
 
-    /// <summary>Q96 = 2^96, the fixed-point scale of <c>sqrtPriceX96</c> (Q64.96).</summary>
+    /// <summary>Q96 = 2^96, the fixed-point scale of <c>sqrtPriceX96</c>.</summary>
     public static readonly BigInteger Q96 = BigInteger.One << 96;
 
-    /// <summary>
-    /// Fractional decimal digits carried through the BigInteger fixed-point step when converting
-    /// sqrt-price to/from <c>sqrtPriceX96</c>. 18 digits is far beyond any verdict-relevant resolution.
-    /// </summary>
+    /// <summary>Fractional decimal digits carried through the BigInteger step in sqrt-price → decimal.</summary>
     public const int SqrtPriceScaleDigits = 18;
 
     /// <summary>
-    /// Relative tolerance for price round-trips that pass through the sqrt / Q96 fixed-point path
-    /// (<c>price → sqrtPriceX96 → price</c>). Documented here so the primitives' round-trip tests share
-    /// one number. Generous relative to the ~1e-18 fixed-point resolution.
+    /// Relative tolerance for analytics round-trips that pass through <c>sqrtPriceX96</c> as a decimal
+    /// (e.g. <c>Tick → SqrtPriceX96 → decimal pool price</c> vs <c>1.0001^tick</c>). Generous relative
+    /// to the ~1e-18 fixed-point resolution.
     /// </summary>
     public const decimal SqrtRoundTripRelativeTolerance = 1e-12m;
 
-    /// <summary><c>price = 1.0001^tick</c> (token1-per-token0, the canonical orientation).</summary>
+    /// <summary>The analytics decimal pool price at <paramref name="tick"/> (<c>1.0001^tick</c>, token1/token0).</summary>
     /// <exception cref="ArgumentOutOfRangeException">Tick outside <see cref="MinTick"/>..<see cref="MaxTick"/>.</exception>
-    /// <exception cref="OverflowException">The price falls outside the analytics-grade decimal window.</exception>
-    public static decimal TickToPrice(int tick)
+    /// <exception cref="PriceOutsideDecimalRangeException">The price falls outside the decimal window.</exception>
+    public static decimal TickToPoolPrice(int tick)
     {
-        GuardTickRange(tick);
-        return tick >= 0
-            ? PowInt(TickBase, tick)
-            : 1m / PowInt(TickBase, -tick);
+        if (tick < MinTick || tick > MaxTick)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tick), tick, "Tick is outside the Uniswap v3 range.");
+        }
+
+        try
+        {
+            var price = tick >= 0 ? PowInt(TickBase, tick) : 1m / PowInt(TickBase, -tick);
+            if (price <= 0m)
+            {
+                throw new PriceOutsideDecimalRangeException(
+                    "Tick price underflows the analytics-grade decimal window.");
+            }
+
+            return price;
+        }
+        catch (OverflowException ex)
+        {
+            throw new PriceOutsideDecimalRangeException(
+                "Tick price overflows the analytics-grade decimal window.", ex);
+        }
     }
 
     /// <summary>
-    /// The greatest tick whose price is ≤ <paramref name="price"/> (Uniswap floor semantics).
-    /// Guarantees <c>TickToPrice(result) &lt;= price &lt; TickToPrice(result+1)</c>.
+    /// The greatest tick whose decimal pool price is ≤ <paramref name="poolPrice"/> (Uniswap floor),
+    /// guaranteeing <c>TickToPoolPrice(result) &lt;= poolPrice &lt; TickToPoolPrice(result+1)</c>.
     /// </summary>
-    /// <exception cref="ArgumentOutOfRangeException">Price is not strictly positive.</exception>
-    public static int PriceToTick(decimal price)
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="poolPrice"/> is not strictly positive.</exception>
+    public static int PoolPriceToTick(decimal poolPrice)
     {
-        if (price <= 0m)
+        if (poolPrice <= 0m)
         {
-            throw new ArgumentOutOfRangeException(nameof(price), price, "Price must be strictly positive.");
+            throw new ArgumentOutOfRangeException(nameof(poolPrice), poolPrice, "Pool price must be strictly positive.");
         }
 
-        // Seed with a double estimate; the result does not depend on its rounding — the loops below
-        // correct it against the exact decimal invariant, so the integer returned is deterministic.
-        var seed = Math.Log((double)price) / Math.Log((double)TickBase);
+        var seed = Math.Log((double)poolPrice) / Math.Log((double)TickBase);
         var candidate = Math.Clamp((int)Math.Floor(seed), MinTick, MaxTick);
 
-        // Pull down while the candidate's price exceeds the target.
-        while (candidate > MinTick && TickToPrice(candidate) > price)
+        while (candidate > MinTick && TickToPoolPrice(candidate) > poolPrice)
         {
             candidate--;
         }
 
-        // Push up while the next tick still fits at or below the target.
-        while (candidate < MaxTick && TickToPrice(candidate + 1) <= price)
+        while (candidate < MaxTick && TickToPoolPrice(candidate + 1) <= poolPrice)
         {
             candidate++;
         }
@@ -108,87 +103,45 @@ public static class PriceMath
         return candidate;
     }
 
-    /// <summary><c>sqrtPriceX96 = floor(sqrt(price) · 2^96)</c>.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">Price is not strictly positive.</exception>
-    public static BigInteger PriceToSqrtPriceX96(decimal price)
-    {
-        if (price <= 0m)
-        {
-            throw new ArgumentOutOfRangeException(nameof(price), price, "Price must be strictly positive.");
-        }
-
-        var sqrtPrice = Sqrt(price);
-        // floor(sqrtPrice · 2^96), done in BigInteger so the 2^96 factor never overflows decimal.
-        var scaled = (BigInteger)(sqrtPrice * Pow10Decimal(SqrtPriceScaleDigits));
-        return scaled * Q96 / Pow10BigInteger(SqrtPriceScaleDigits);
-    }
-
-    /// <summary><c>price = (sqrtPriceX96 / 2^96)^2</c>.</summary>
+    /// <summary>The analytics decimal pool price implied by a raw <c>sqrtPriceX96</c> (<c>(s/2^96)^2</c>).</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="sqrtPriceX96"/> is not strictly positive.</exception>
-    /// <exception cref="OverflowException">The price falls outside the analytics-grade decimal window.</exception>
-    public static decimal SqrtPriceX96ToPrice(BigInteger sqrtPriceX96)
+    /// <exception cref="PriceOutsideDecimalRangeException">The price falls outside the decimal window.</exception>
+    public static decimal SqrtPriceX96ToPoolPrice(BigInteger sqrtPriceX96)
     {
         if (sqrtPriceX96 <= BigInteger.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(sqrtPriceX96), "sqrtPriceX96 must be strictly positive.");
         }
 
-        // sqrtPrice = sqrtPriceX96 / 2^96, taken to fixed-point in BigInteger to dodge decimal overflow.
-        var scaled = sqrtPriceX96 * Pow10BigInteger(SqrtPriceScaleDigits) / Q96;
-        var sqrtPrice = (decimal)scaled / Pow10Decimal(SqrtPriceScaleDigits);
-        return sqrtPrice * sqrtPrice;
+        try
+        {
+            var scaled = sqrtPriceX96 * Pow10BigInteger(SqrtPriceScaleDigits) / Q96;
+            var sqrtPrice = (decimal)scaled / Pow10Decimal(SqrtPriceScaleDigits);
+            return sqrtPrice * sqrtPrice;
+        }
+        catch (OverflowException ex)
+        {
+            throw new PriceOutsideDecimalRangeException(
+                "sqrtPriceX96 price overflows the analytics-grade decimal window.", ex);
+        }
     }
 
-    /// <summary><c>sqrtPriceX96</c> at <paramref name="tick"/>.</summary>
-    public static BigInteger TickToSqrtPriceX96(int tick) => PriceToSqrtPriceX96(TickToPrice(tick));
-
-    /// <summary>The greatest tick whose price is ≤ the price implied by <paramref name="sqrtPriceX96"/>.</summary>
-    public static int SqrtPriceX96ToTick(BigInteger sqrtPriceX96) => PriceToTick(SqrtPriceX96ToPrice(sqrtPriceX96));
-
-    /// <summary>
-    /// Deterministic decimal square root via Newton's method. A double seed starts the iteration;
-    /// convergence and the final value are pure decimal, hence reproducible.
-    /// </summary>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="value"/> is negative.</exception>
-    public static decimal Sqrt(decimal value)
+    /// <summary>Scales a canonical (token1/token0) human price to the raw pool price: <c>· 10^(dec1 − dec0)</c>.</summary>
+    public static decimal CanonicalHumanToRawPrice(decimal canonicalHumanPrice, TokenDecimals decimals)
     {
-        if (value < 0m)
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "Cannot take the square root of a negative number.");
-        }
-
-        if (value == 0m)
-        {
-            return 0m;
-        }
-
-        var guess = (decimal)Math.Sqrt((double)value);
-        if (guess <= 0m)
-        {
-            guess = value;
-        }
-
-        // Newton iteration; quadratic convergence reaches a decimal fixed point well within this bound.
-        for (var i = 0; i < 100; i++)
-        {
-            var next = (guess + value / guess) / 2m;
-            if (next == guess)
-            {
-                break;
-            }
-
-            guess = next;
-        }
-
-        return guess;
+        var diff = decimals.Token1 - decimals.Token0;
+        return diff >= 0
+            ? canonicalHumanPrice * Pow10Decimal(diff)
+            : canonicalHumanPrice / Pow10Decimal(-diff);
     }
 
-    private static void GuardTickRange(int tick)
+    /// <summary>Scales a raw pool price to the canonical (token1/token0) human price: <c>· 10^(dec0 − dec1)</c>.</summary>
+    public static decimal RawPriceToCanonicalHuman(decimal rawPoolPrice, TokenDecimals decimals)
     {
-        if (tick < MinTick || tick > MaxTick)
-        {
-            throw new ArgumentOutOfRangeException(nameof(tick), tick, "Tick is outside the Uniswap v3 range.");
-        }
+        var diff = decimals.Token1 - decimals.Token0;
+        return diff >= 0
+            ? rawPoolPrice / Pow10Decimal(diff)
+            : rawPoolPrice * Pow10Decimal(-diff);
     }
 
     /// <summary>Integer exponentiation by squaring in decimal. <paramref name="exponent"/> must be ≥ 0.</summary>

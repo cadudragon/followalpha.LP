@@ -1,17 +1,17 @@
 namespace FollowAlpha.LP.Domain.Primitives;
 
 /// <summary>
-/// A requested price band [<see cref="Lower"/>, <see cref="Upper"/>], both bounds in the same
-/// orientation. <see cref="ToInitializedTicks"/> maps it to initialized ticks for a fee tier — a
-/// distinct concern from the canonical math: it rounds <i>outward</i> (lower down, upper up) so the
-/// returned tick band always <b>contains</b> the request and never silently narrows it
-/// (ARCHITECTURE.md §4.1, "Range-boundary conversion").
+/// A requested price band in <see cref="HumanPrice"/> terms, both bounds in the same orientation.
+/// <see cref="ToInitializedTicks"/> scales it to raw pool prices with the pool's decimals and maps it
+/// to initialized ticks for a fee tier — a concern kept separate from the canonical math. It rounds
+/// <i>outward</i> (lower down, upper up) so the returned tick band always <b>contains</b> the request
+/// and never silently narrows it (ARCHITECTURE.md §4.1).
 /// </summary>
 public readonly record struct PriceRange
 {
     /// <summary>Constructs a range; bounds must share an orientation and be strictly ordered.</summary>
     /// <exception cref="ArgumentException">Bounds have different orientations, or <paramref name="lower"/> is not below <paramref name="upper"/>.</exception>
-    public PriceRange(Price lower, Price upper)
+    public PriceRange(HumanPrice lower, HumanPrice upper)
     {
         if (lower.Orientation != upper.Orientation)
         {
@@ -27,38 +27,38 @@ public readonly record struct PriceRange
         Upper = upper;
     }
 
-    /// <summary>The lower price bound (in <see cref="Price.Orientation"/>).</summary>
-    public Price Lower { get; }
+    /// <summary>The lower price bound (in <see cref="HumanPrice.Orientation"/>).</summary>
+    public HumanPrice Lower { get; }
 
-    /// <summary>The upper price bound (in <see cref="Price.Orientation"/>).</summary>
-    public Price Upper { get; }
+    /// <summary>The upper price bound (in <see cref="HumanPrice.Orientation"/>).</summary>
+    public HumanPrice Upper { get; }
 
     /// <summary>
-    /// The initialized tick band, in canonical orientation, that contains this range for
-    /// <paramref name="feeTier"/>. The lower tick rounds down and the upper tick rounds up, both to a
-    /// multiple of the tier's tick spacing. Invariants:
-    /// <c>TickToPrice(lower) &lt;= canonicalLowerPrice</c>, <c>TickToPrice(upper) &gt;= canonicalUpperPrice</c>,
+    /// The initialized tick band, in canonical (raw token1/token0) terms, that contains this range for
+    /// <paramref name="feeTier"/> given the pool's <paramref name="decimals"/>. Lower rounds down,
+    /// upper rounds up, both to a multiple of the tier's tick spacing. Invariants:
+    /// <c>TickToPoolPrice(lower) &lt;= rawLowerPrice</c>, <c>TickToPoolPrice(upper) &gt;= rawUpperPrice</c>,
     /// <c>lower % spacing == 0</c>, <c>upper % spacing == 0</c>.
     /// </summary>
-    public (Tick Lower, Tick Upper) ToInitializedTicks(FeeTier feeTier)
+    public (Tick Lower, Tick Upper) ToInitializedTicks(FeeTier feeTier, TokenDecimals decimals)
     {
-        // Map to canonical orientation explicitly. Reciprocation reverses order, so when the bounds are
-        // inverted the requested lower/upper swap roles — handled here, never silently.
-        var canonicalLower = Lower.IsCanonical ? Lower.Value : Upper.ToCanonical().Value;
-        var canonicalUpper = Lower.IsCanonical ? Upper.Value : Lower.ToCanonical().Value;
+        // Convert both bounds to raw pool price, then sort: orientation inversion reverses ordering, so
+        // this maps lower/upper explicitly rather than flipping them silently.
+        var rawA = Lower.ToPoolPrice(decimals).RawToken1PerToken0;
+        var rawB = Upper.ToPoolPrice(decimals).RawToken1PerToken0;
+        var rawLower = Math.Min(rawA, rawB);
+        var rawUpper = Math.Max(rawA, rawB);
 
         var spacing = feeTier.TickSpacing;
 
-        // Lower: floor to spacing, then step down until the tick's price is at or below the request.
-        var lowerTick = FloorToSpacing(PriceMath.PriceToTick(canonicalLower), spacing);
-        while (PriceMath.TickToPrice(lowerTick) > canonicalLower)
+        var lowerTick = FloorToSpacing(PriceMath.PoolPriceToTick(rawLower), spacing);
+        while (PriceMath.TickToPoolPrice(lowerTick) > rawLower)
         {
             lowerTick -= spacing;
         }
 
-        // Upper: ceil to spacing, then step up until the tick's price is at or above the request.
-        var upperTick = CeilToSpacing(PriceMath.PriceToTick(canonicalUpper), spacing);
-        while (PriceMath.TickToPrice(upperTick) < canonicalUpper)
+        var upperTick = CeilToSpacing(PriceMath.PoolPriceToTick(rawUpper), spacing);
+        while (PriceMath.TickToPoolPrice(upperTick) < rawUpper)
         {
             upperTick += spacing;
         }
@@ -66,7 +66,7 @@ public readonly record struct PriceRange
         return (new Tick(lowerTick), new Tick(upperTick));
     }
 
-    // Operational tick-spacing rounding — deliberately separate from canonical price math (PriceMath).
+    // Operational tick-spacing rounding — deliberately separate from canonical price math.
     private static int FloorToSpacing(int tick, int spacing)
     {
         var remainder = tick % spacing;

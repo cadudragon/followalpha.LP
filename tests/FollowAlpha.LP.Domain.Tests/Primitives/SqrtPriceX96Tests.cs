@@ -23,16 +23,14 @@ public class SqrtPriceX96Tests
     }
 
     [Fact]
-    public void To_price_returns_a_canonical_price()
+    public void To_tick_is_exact_at_Q96()
     {
-        var price = new SqrtPriceX96(PriceMath.Q96).ToPrice();
-        price.Value.Should().Be(1m);
-        price.Orientation.Should().Be(PriceOrientation.Token1PerToken0);
+        new SqrtPriceX96(PriceMath.Q96).ToTick().Value.Should().Be(0);
     }
 
     [Fact]
-    public void To_tick_floors_to_the_implied_tick()
+    public void To_pool_price_returns_the_analytics_view()
     {
-        new SqrtPriceX96(PriceMath.Q96).ToTick().Value.Should().Be(0);
+        new SqrtPriceX96(PriceMath.Q96).ToPoolPrice().RawToken1PerToken0.Should().Be(1m);
     }
 }

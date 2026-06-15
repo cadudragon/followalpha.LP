@@ -6,10 +6,12 @@ namespace FollowAlpha.LP.Domain.Tests.Primitives;
 
 public class PriceRangeTests
 {
+    private static readonly TokenDecimals UsdcWeth = new(6, 18);
+
     [Fact]
     public void Constructor_stores_ordered_bounds()
     {
-        var range = new PriceRange(new Price(1500m), new Price(2500m));
+        var range = new PriceRange(new HumanPrice(1500m), new HumanPrice(2500m));
         range.Lower.Value.Should().Be(1500m);
         range.Upper.Value.Should().Be(2500m);
     }
@@ -17,7 +19,7 @@ public class PriceRangeTests
     [Fact]
     public void Constructor_rejects_unordered_bounds()
     {
-        var act = () => new PriceRange(new Price(2500m), new Price(1500m));
+        var act = () => new PriceRange(new HumanPrice(2500m), new HumanPrice(1500m));
         act.Should().Throw<ArgumentException>();
     }
 
@@ -25,8 +27,8 @@ public class PriceRangeTests
     public void Constructor_rejects_mixed_orientations()
     {
         var act = () => new PriceRange(
-            new Price(1500m, PriceOrientation.Token1PerToken0),
-            new Price(2500m, PriceOrientation.Token0PerToken1));
+            new HumanPrice(1500m, PriceOrientation.Token1PerToken0),
+            new HumanPrice(2500m, PriceOrientation.Token0PerToken1));
         act.Should().Throw<ArgumentException>();
     }
 
@@ -34,31 +36,50 @@ public class PriceRangeTests
     public void To_initialized_ticks_contains_the_request_and_aligns_to_spacing()
     {
         var feeTier = FeeTier.Medium; // spacing 60
-        var range = new PriceRange(new Price(1500m), new Price(2500m));
+        // Canonical token1/token0 band (decimals equal so raw == human, keeps the assertion direct).
+        var range = new PriceRange(new HumanPrice(1500m), new HumanPrice(2500m));
+        var decimals = new TokenDecimals(18, 18);
 
-        var (lower, upper) = range.ToInitializedTicks(feeTier);
+        var (lower, upper) = range.ToInitializedTicks(feeTier, decimals);
 
-        // Aligned to tick spacing.
         (lower.Value % feeTier.TickSpacing).Should().Be(0);
         (upper.Value % feeTier.TickSpacing).Should().Be(0);
 
-        // Contains the request: the band's prices bracket the requested bounds, never narrower.
-        PriceMath.TickToPrice(lower.Value).Should().BeLessThanOrEqualTo(1500m);
-        PriceMath.TickToPrice(upper.Value).Should().BeGreaterThanOrEqualTo(2500m);
+        // Contains the request in raw pool-price space, never narrower.
+        PriceMath.TickToPoolPrice(lower.Value).Should().BeLessThanOrEqualTo(1500m);
+        PriceMath.TickToPoolPrice(upper.Value).Should().BeGreaterThanOrEqualTo(2500m);
+    }
+
+    [Fact]
+    public void Scaling_is_applied_before_mapping_to_ticks()
+    {
+        // With real USDC/WETH decimals, a human band must contain the request in the *scaled* raw space.
+        var feeTier = FeeTier.Low; // spacing 10
+        var range = new PriceRange(new HumanPrice(0.0004m), new HumanPrice(0.0006m));
+
+        var (lower, upper) = range.ToInitializedTicks(feeTier, UsdcWeth);
+
+        var rawLower = new HumanPrice(0.0004m).ToPoolPrice(UsdcWeth).RawToken1PerToken0;
+        var rawUpper = new HumanPrice(0.0006m).ToPoolPrice(UsdcWeth).RawToken1PerToken0;
+
+        (lower.Value % feeTier.TickSpacing).Should().Be(0);
+        (upper.Value % feeTier.TickSpacing).Should().Be(0);
+        PriceMath.TickToPoolPrice(lower.Value).Should().BeLessThanOrEqualTo(rawLower);
+        PriceMath.TickToPoolPrice(upper.Value).Should().BeGreaterThanOrEqualTo(rawUpper);
     }
 
     [Fact]
     public void Inverted_orientation_maps_to_the_same_ticks_with_bounds_swapped()
     {
         var feeTier = FeeTier.Medium;
-        var canonical = new PriceRange(new Price(1500m), new Price(2500m));
+        var canonical = new PriceRange(new HumanPrice(0.0004m), new HumanPrice(0.0006m));
 
-        // Same physical band, expressed in the inverse orientation: reciprocation reverses order, so the
-        // lower inverted price is 1/2500 and the upper is 1/1500.
+        // Same physical band in token0/token1 terms: reciprocation reverses order.
         var inverted = new PriceRange(
-            new Price(1m / 2500m, PriceOrientation.Token0PerToken1),
-            new Price(1m / 1500m, PriceOrientation.Token0PerToken1));
+            new HumanPrice(1m / 0.0006m, PriceOrientation.Token0PerToken1),
+            new HumanPrice(1m / 0.0004m, PriceOrientation.Token0PerToken1));
 
-        inverted.ToInitializedTicks(feeTier).Should().Be(canonical.ToInitializedTicks(feeTier));
+        inverted.ToInitializedTicks(feeTier, UsdcWeth)
+            .Should().Be(canonical.ToInitializedTicks(feeTier, UsdcWeth));
     }
 }

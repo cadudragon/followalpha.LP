@@ -3,9 +3,9 @@ using System.Numerics;
 namespace FollowAlpha.LP.Domain.Primitives;
 
 /// <summary>
-/// The on-chain square-root price in Q64.96 fixed point: <c>sqrtPriceX96 = sqrt(price) · 2^96</c>,
-/// stored raw as a <see cref="BigInteger"/>. Expresses the canonical (token1-per-token0) price.
-/// Conversions delegate to <see cref="PriceMath"/>.
+/// The on-chain square-root price in Q64.96 fixed point: <c>sqrt(token1/token0) · 2^96</c>, stored raw
+/// as a <see cref="BigInteger"/>. <see cref="ToTick"/> is exact (<see cref="TickMath"/>);
+/// <see cref="ToPoolPrice"/> is the analytics-grade decimal view.
 /// </summary>
 public readonly record struct SqrtPriceX96
 {
@@ -24,9 +24,11 @@ public readonly record struct SqrtPriceX96
     /// <summary>The raw Q64.96 integer.</summary>
     public BigInteger Value { get; }
 
-    /// <summary>The canonical price implied by this sqrt-price.</summary>
-    public Price ToPrice() => new(PriceMath.SqrtPriceX96ToPrice(Value));
+    /// <summary>The exact tick for this sqrt-price (greatest tick whose ratio ≤ this value).</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Value outside <c>[MinSqrtRatio, MaxSqrtRatio)</c>.</exception>
+    public Tick ToTick() => new(TickMath.GetTickAtSqrtRatio(Value));
 
-    /// <summary>The greatest tick whose price is ≤ the price implied by this sqrt-price.</summary>
-    public Tick ToTick() => new(PriceMath.SqrtPriceX96ToTick(Value));
+    /// <summary>The analytics-grade decimal pool price implied by this sqrt-price (<c>(s/2^96)^2</c>).</summary>
+    /// <exception cref="PriceOutsideDecimalRangeException">The price falls outside the decimal window.</exception>
+    public PoolPrice ToPoolPrice() => new(PriceMath.SqrtPriceX96ToPoolPrice(Value));
 }
