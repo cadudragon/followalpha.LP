@@ -1,8 +1,8 @@
 {
   "data": {
     "ticks": [
-      { "tickIdx": "-199020", "liquidityNet": "1000", "liquidityGross": "1000" },
-      { "tickIdx": "-198960", "liquidityNet": "-500", "liquidityGross": "500" }
+      { "tickIdx": "-887270", "liquidityNet": "-47945362492322073914012646", "liquidityGross": "-47945362492322073914012646" },
+      { "tickIdx": "-887260", "liquidityNet": "47945362492153291893339534", "liquidityGross": "-47945362492153291893339534" }
     ]
   }
 }

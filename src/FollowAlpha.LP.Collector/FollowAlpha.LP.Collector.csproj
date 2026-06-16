@@ -4,6 +4,7 @@
        Phase 0 keeps it a package-free console skeleton. References Application + Infrastructure (DI root). -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <UserSecretsId>3ed5edb1-41cb-4fc1-94dd-71a909a0e360</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

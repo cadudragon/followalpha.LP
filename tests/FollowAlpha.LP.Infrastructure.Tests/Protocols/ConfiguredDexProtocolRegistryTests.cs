@@ -14,8 +14,8 @@ public class ConfiguredDexProtocolRegistryTests
         var registry = Registry();
 
         registry.All.Should().HaveCount(2);
-        registry.GetByChain("arbitrum").SubgraphId.Should().Be("FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX");
-        registry.GetByChain("base").SubgraphId.Should().Be("FUbEPQw1oMghy39fwWBFY5fE6MXPXZQtjncQy2cXdrNS");
+        registry.GetByChain("arbitrum").SubgraphId.Should().Be("FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM");
+        registry.GetByChain("base").SubgraphId.Should().Be("96eJ9Go8gFjySRGnndG7EYxThaiwVDV8BYPp1TMDcoYh");
     }
 
     [Fact]
@@ -24,6 +24,7 @@ public class ConfiguredDexProtocolRegistryTests
         var arbitrum = Registry().GetByChain("arbitrum");
         arbitrum.Source.Should().NotBeNullOrWhiteSpace();
         arbitrum.RecordedOnUtc.Should().Be(new DateOnly(2026, 6, 16));
+        arbitrum.SubgraphDeploymentId.Should().Be("QmZ5uwhnwsJXAQGYEF8qKPQ85iVhYAcVZcZAPfrF7ZNb9z");
         arbitrum.FeeTiers.Should().Contain([100, 500, 3000, 10000]);
     }
 

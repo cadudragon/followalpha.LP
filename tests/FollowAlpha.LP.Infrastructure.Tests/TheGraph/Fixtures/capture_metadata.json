@@ -1,0 +1,49 @@
+{
+  "capturedAtUtc": "2026-06-16T00:00:00Z",
+  "source": "The Graph decentralized gateway",
+  "note": "Captured with a local GRAPH_API_KEY from user-secrets; the key is not present in fixtures.",
+  "queries": {
+    "pool_state": "query($id: ID!) { pool(id: $id) { tick sqrtPrice liquidity feeTier totalValueLockedUSD } }",
+    "pool_day_data": "query($id: ID!, $days: Int!) { pool(id: $id) { poolDayData(first: $days, orderBy: date, orderDirection: desc) { date volumeUSD } } }",
+    "ticks_page": "query($pool: String!, $lastTick: BigInt!, $pageSize: Int!) { ticks(first: $pageSize, where: { pool: $pool, tickIdx_gt: $lastTick }, orderBy: tickIdx, orderDirection: asc) { tickIdx liquidityNet liquidityGross } }"
+  },
+  "captures": [
+    {
+      "chainId": "arbitrum",
+      "subgraphId": "FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM",
+      "deploymentId": "QmZ5uwhnwsJXAQGYEF8qKPQ85iVhYAcVZcZAPfrF7ZNb9z",
+      "poolAddress": "0xc31e54c7a869b9fcbecc14363cf510d1c41fa443",
+      "pool": "WETH/USDC 0.05%",
+      "fixtures": [
+        "pool_state.json",
+        "pool_day_data.json",
+        "ticks_page1.json",
+        "ticks_page2.json"
+      ]
+    },
+    {
+      "chainId": "base",
+      "subgraphId": "96eJ9Go8gFjySRGnndG7EYxThaiwVDV8BYPp1TMDcoYh",
+      "deploymentId": "QmPb76mWQkpwbVgCrCwtFkXCy81o929RNNqbhW1pLpXACe",
+      "poolAddress": "0x6c561b446416e1a00e8e93e221854d6ea4171372",
+      "pool": "WETH/USDC 0.30%",
+      "fixtures": []
+    }
+  ],
+  "supersededIds": [
+    {
+      "chainId": "arbitrum",
+      "subgraphId": "FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX",
+      "reason": "Messari schema; query root exposes liquidityPools, not native Uniswap v3 pools."
+    },
+    {
+      "chainId": "base",
+      "subgraphId": "FUbEPQw1oMghy39fwWBFY5fE6MXPXZQtjncQy2cXdrNS",
+      "reason": "Messari schema; query root exposes liquidityPools, not native Uniswap v3 pools."
+    }
+  ],
+  "fixtureNotes": [
+    "ticks_page1.json was captured with pageSize=2 from the adapter start cursor.",
+    "ticks_page2.json was captured from the real gateway after the page1 cursor with pageSize=1 so the offline pagination test terminates without recording the entire tick distribution."
+  ]
+}

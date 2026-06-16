@@ -8,8 +8,8 @@ namespace FollowAlpha.LP.Infrastructure.Tests.TheGraph;
 
 public class TheGraphPoolDataSourceTests
 {
-    private const string PoolAddress = "0xAbCdEf0000000000000000000000000000000001";
-    private const string LowerPoolAddress = "0xabcdef0000000000000000000000000000000001";
+    private const string PoolAddress = "0xC31E54c7a869B9FcBEcc14363CF510d1c41fa443";
+    private const string LowerPoolAddress = "0xc31e54c7a869b9fcbecc14363cf510d1c41fa443";
 
     [Fact]
     public async Task Get_pool_state_parses_fields_and_targets_the_chain_subgraph()
@@ -19,14 +19,14 @@ public class TheGraphPoolDataSourceTests
 
         var state = await source.GetPoolStateAsync("arbitrum", PoolAddress);
 
-        state.CurrentTick.Should().Be(-198765);
-        state.SqrtPriceX96.Should().Be("4054976535745954444878957");
-        state.Liquidity.Should().Be("123456789012345678");
-        state.FeeTier.Should().Be(3000);
-        state.TvlUsd.Should().Be(12345678.90m);
+        state.CurrentTick.Should().Be(-201378);
+        state.SqrtPriceX96.Should().Be("3359238545332932322845871");
+        state.Liquidity.Should().Be("35661445916096867");
+        state.FeeTier.Should().Be(500);
+        state.TvlUsd.Should().Be(28081320.76739112050339888284057436m);
 
-        // Targets the Arbitrum subgraph via the gateway, carries the key, and queries by lowercased id.
-        handler.RequestUris[0]!.ToString().Should().Contain("subgraphs/id/FQ6JYszEKApsBpAmiHesRsd9Ygc6mzmpNRANeVQFYoVX");
+        // Targets the Arbitrum pinned deployment via the gateway, carries the key, and queries by lowercased id.
+        handler.RequestUris[0]!.ToString().Should().Contain("deployments/id/QmZ5uwhnwsJXAQGYEF8qKPQ85iVhYAcVZcZAPfrF7ZNb9z");
         handler.RequestUris[0]!.ToString().Should().Contain("test-key");
         handler.RequestBodies[0].Should().Contain(LowerPoolAddress);
     }
@@ -39,9 +39,9 @@ public class TheGraphPoolDataSourceTests
         var volumes = await source.GetDayVolumesAsync("arbitrum", PoolAddress, days: 2);
 
         volumes.Should().HaveCount(2);
-        volumes[0].Date.Should().Be(DateTimeOffset.FromUnixTimeSeconds(1718064000));
-        volumes[0].VolumeUsd.Should().Be(5000000.5m);
-        volumes[1].VolumeUsd.Should().Be(4200000.25m);
+        volumes[0].Date.Should().Be(DateTimeOffset.FromUnixTimeSeconds(1781568000));
+        volumes[0].VolumeUsd.Should().Be(665182.5452719386935225804442321048m);
+        volumes[1].VolumeUsd.Should().Be(497561.1388215103760683085788840617m);
     }
 
     [Fact]
@@ -52,9 +52,9 @@ public class TheGraphPoolDataSourceTests
 
         var ticks = await source.GetTickLiquidityAsync("arbitrum", PoolAddress);
 
-        ticks.Select(t => t.Tick).Should().Equal(-199020, -198960, -198900);
+        ticks.Select(t => t.Tick).Should().Equal(-887270, -887260, -598700);
         handler.RequestUris.Should().HaveCount(2); // page1 was full (==pageSize) so a second page was fetched
-        handler.RequestBodies[1].Should().Contain("\"lastTick\":\"-198960\""); // cursor = last tick of page 1
+        handler.RequestBodies[1].Should().Contain("\"lastTick\":\"-887260\""); // cursor = last tick of page 1
     }
 
     [Fact]

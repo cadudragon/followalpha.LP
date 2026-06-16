@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <UserSecretsId>38bc51d6-c66f-41c2-a159-52b4802d768a</UserSecretsId>
+  </PropertyGroup>
+
   <!-- ASP.NET Core minimal API host. Composition root only: references Application, and
        Infrastructure for DI wiring (AGENTS.md hard rule 1). Range Advisor endpoints land in Phase 3;
        audit/channel endpoints complete the headless product in Phase 4. -->

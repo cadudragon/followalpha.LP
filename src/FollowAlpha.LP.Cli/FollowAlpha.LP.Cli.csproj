@@ -4,6 +4,7 @@
        References Application + Infrastructure (DI root). -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <UserSecretsId>ae06e3fd-ad30-4bea-a3d3-792b94605293</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
