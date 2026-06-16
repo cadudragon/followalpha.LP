@@ -10,6 +10,10 @@
     <!-- Persistence (Phase 2): EF Core + SQLite, pinned to the .NET 10 line. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3" />
+    <!-- EVM client (Phase 2.3): Nethereum for NonfungiblePositionManager event logs + receipts. -->
+    <PackageVersion Include="Nethereum.Web3" Version="6.1.0" />
+    <!-- Override Nethereum's transitive Newtonsoft.Json 11.0.2 (NU1903 high-sev) with the patched line. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>

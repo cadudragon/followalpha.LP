@@ -61,6 +61,32 @@ purpose-specific projection or conversion rather than weakening stored precision
 `phase-2-done` is created only after item 2.5 passes the agent gate. Item 2.6 is the principal's
 VPS deployment confirmation and is logged separately.
 
+### Chain Event Reader Enrichment
+
+**Status:** deferred to the Collector (2.4) / LP-Audit (4).
+
+Phase 2.3's `IChainEventReader` is a thin raw reader (`ChainPositionEvent`: raw integers as text,
+native gas; no tick/pool/decimals/USD). Building the persistable `PositionEvent` requires enrichment
+done downstream: ownership/tokenId attribution via NPM `Transfer(to=wallet)`; `positions(tokenId)`
+for `tickLower`/`tickUpper` (with the event's block tag when historical state matters);
+`factory.getPool` (cross-checkable by CREATE2) for `PoolId`; token decimals for human
+`Amount0`/`Amount1`; gas→USD via a price source; and writing the `PositionEvent` fact.
+
+Edge cases to handle at enrichment (not in the reader):
+- a `tokenId` transferred between wallets mid-life (attribution must be owner/time aware);
+- `Collect.recipient` ≠ the position owner;
+- positions opened before the queried `fromBlock`;
+- `positions(tokenId)` current state may not equal the state at a historical block.
+
+### Chain Event Reader Wire-Decode Fixtures
+
+**Status:** representative now; real capture pending.
+
+The 2.3 offline tests exercise the reader's mapping/ordering/gas-caching against in-memory decoded
+event captures (the `IEvmRpc` seam sits above Nethereum's log decoding). The wire-level log→DTO
+decode (ABI topics/data) is validated against real recorded JSON-RPC captures — pending an RPC key /
+network, the same gold standard as the 2.2 The Graph fixtures.
+
 ## Operational Requirements
 
 ### SQLite Foreign Keys in Runtime
