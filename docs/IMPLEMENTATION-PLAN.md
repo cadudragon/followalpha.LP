@@ -17,6 +17,10 @@ Two kinds of gate, mirroring the research-program discipline:
 
 An agent that reaches a gate writes a short **Gate Report** (what was built, evidence, known gaps) and stops. It does not self-certify a judgment gate.
 
+Persistent deferrals and modelling choices that must survive context resets live in
+`docs/OPEN-DECISIONS.md`. Commit bodies may summarize them, but they are not the durable source of
+truth.
+
 ---
 
 ## Phase 0 — Skeleton & guardrails
