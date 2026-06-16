@@ -122,6 +122,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("WalletId");
+
                     b.ToTable("AuditReports");
                 });
 
@@ -266,6 +268,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PoolId");
+
                     b.HasIndex("TenantId", "PoolId");
 
                     b.ToTable("DecisionLogEntries");
@@ -301,6 +305,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChainId");
+
                     b.ToTable("DexProtocols");
                 });
 
@@ -332,6 +338,10 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PositionId");
+
+                    b.HasIndex("SupersedesIntentRecordId");
 
                     b.HasIndex("TenantId", "PositionId");
 
@@ -378,6 +388,14 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChainId");
+
+                    b.HasIndex("DexProtocolId");
+
+                    b.HasIndex("Token0AssetId");
+
+                    b.HasIndex("Token1AssetId");
+
                     b.ToTable("Pools");
                 });
 
@@ -414,6 +432,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("TenantId", "PoolId", "AsOfUtc");
+
+                    b.HasIndex("PoolId");
 
                     b.ToTable("PoolSnapshots");
                 });
@@ -452,6 +472,10 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PoolId");
+
+                    b.HasIndex("WalletId");
 
                     b.ToTable("Positions");
                 });
@@ -512,6 +536,10 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
                     b.HasKey("TenantId", "ChainId", "TxHash", "LogIndex");
 
+                    b.HasIndex("PoolId");
+
+                    b.HasIndex("WalletId");
+
                     b.ToTable("PositionEvents");
                 });
 
@@ -550,6 +578,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
                     b.HasKey("TenantId", "AssetId", "Resolution", "OpenTimeUtc");
 
+                    b.HasIndex("AssetId");
+
                     b.ToTable("PriceBars");
                 });
 
@@ -576,6 +606,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("TenantId", "PoolId", "AsOfUtc", "Tick");
+
+                    b.HasIndex("PoolId");
 
                     b.ToTable("TickLiquiditySnapshots");
                 });
@@ -604,6 +636,140 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Wallets");
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.AuditReport", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.DecisionAnnotation", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.DecisionLogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("DecisionLogEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.DecisionLogEntry", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Pool", null)
+                        .WithMany()
+                        .HasForeignKey("PoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.DexProtocol", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Chain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.IntentRecord", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Position", null)
+                        .WithMany()
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.IntentRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SupersedesIntentRecordId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.Pool", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Chain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.DexProtocol", null)
+                        .WithMany()
+                        .HasForeignKey("DexProtocolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("Token0AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("Token1AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.PoolSnapshot", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Pool", null)
+                        .WithMany()
+                        .HasForeignKey("PoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.Position", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Pool", null)
+                        .WithMany()
+                        .HasForeignKey("PoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.PositionEvent", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Pool", null)
+                        .WithMany()
+                        .HasForeignKey("PoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.PriceBar", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.TickLiquiditySnapshot", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Pool", null)
+                        .WithMany()
+                        .HasForeignKey("PoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

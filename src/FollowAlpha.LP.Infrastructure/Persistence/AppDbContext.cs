@@ -46,27 +46,68 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Foreign keys realize the DATA-MODEL.md §3 relationships and are enforced by the database
+        // (SQLite has foreign_keys ON via Microsoft.Data.Sqlite). No navigation properties — the entities
+        // stay plain POCOs; relationships are configured by FK scalar only. Restrict everywhere: these
+        // aggregates are append-only/rebuildable and are never cascade-deleted.
+
         // Working state
         modelBuilder.Entity<Chain>().HasKey(e => e.Id);
-        modelBuilder.Entity<DexProtocol>().HasKey(e => e.Id);
+        modelBuilder.Entity<DexProtocol>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.HasOne<Chain>().WithMany().HasForeignKey(e => e.ChainId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<Asset>().HasKey(e => e.Id);
-        modelBuilder.Entity<Pool>().HasKey(e => e.Id);
+        modelBuilder.Entity<Pool>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.HasOne<Chain>().WithMany().HasForeignKey(e => e.ChainId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<DexProtocol>().WithMany().HasForeignKey(e => e.DexProtocolId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Asset>().WithMany().HasForeignKey(e => e.Token0AssetId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Asset>().WithMany().HasForeignKey(e => e.Token1AssetId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<Wallet>().HasKey(e => e.Id);
-        modelBuilder.Entity<AlertRule>().HasKey(e => e.Id);
+        modelBuilder.Entity<AlertRule>().HasKey(e => e.Id); // TargetRef is polymorphic (Type+ref) — no FK.
         modelBuilder.Entity<AppSetting>().HasKey(e => e.Key);
 
         // Facts: composite natural key = primary key (scoped by TenantId).
-        modelBuilder.Entity<PriceBar>().HasKey(e => new { e.TenantId, e.AssetId, e.Resolution, e.OpenTimeUtc });
-        modelBuilder.Entity<PoolSnapshot>().HasKey(e => new { e.TenantId, e.PoolId, e.AsOfUtc });
-        modelBuilder.Entity<TickLiquiditySnapshot>().HasKey(e => new { e.TenantId, e.PoolId, e.AsOfUtc, e.Tick });
-        modelBuilder.Entity<PositionEvent>().HasKey(e => new { e.TenantId, e.ChainId, e.TxHash, e.LogIndex });
+        modelBuilder.Entity<PriceBar>(b =>
+        {
+            b.HasKey(e => new { e.TenantId, e.AssetId, e.Resolution, e.OpenTimeUtc });
+            b.HasOne<Asset>().WithMany().HasForeignKey(e => e.AssetId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<PoolSnapshot>(b =>
+        {
+            b.HasKey(e => new { e.TenantId, e.PoolId, e.AsOfUtc });
+            b.HasOne<Pool>().WithMany().HasForeignKey(e => e.PoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<TickLiquiditySnapshot>(b =>
+        {
+            b.HasKey(e => new { e.TenantId, e.PoolId, e.AsOfUtc, e.Tick });
+            b.HasOne<Pool>().WithMany().HasForeignKey(e => e.PoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<PositionEvent>(b =>
+        {
+            b.HasKey(e => new { e.TenantId, e.ChainId, e.TxHash, e.LogIndex });
+            b.HasOne<Wallet>().WithMany().HasForeignKey(e => e.WalletId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Pool>().WithMany().HasForeignKey(e => e.PoolId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         // Position projection + intent history
-        modelBuilder.Entity<Position>().HasKey(e => e.Id);
+        modelBuilder.Entity<Position>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.HasOne<Wallet>().WithMany().HasForeignKey(e => e.WalletId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Pool>().WithMany().HasForeignKey(e => e.PoolId).OnDelete(DeleteBehavior.Restrict);
+        });
         modelBuilder.Entity<IntentRecord>(b =>
         {
             b.HasKey(e => e.Id);
             b.HasIndex(e => new { e.TenantId, e.PositionId });
+            b.HasOne<Position>().WithMany().HasForeignKey(e => e.PositionId).OnDelete(DeleteBehavior.Restrict);
+            // Self-FK: a reclassification supersedes a prior record in the same chain.
+            b.HasOne<IntentRecord>().WithMany().HasForeignKey(e => e.SupersedesIntentRecordId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Decision records + analysis outputs
@@ -74,13 +115,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             b.HasKey(e => e.Id);
             b.HasIndex(e => new { e.TenantId, e.PoolId });
+            b.HasOne<Pool>().WithMany().HasForeignKey(e => e.PoolId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<DecisionAnnotation>(b =>
         {
             b.HasKey(e => e.Id);
             b.HasIndex(e => e.DecisionLogEntryId);
+            b.HasOne<DecisionLogEntry>().WithMany().HasForeignKey(e => e.DecisionLogEntryId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<BacktestRun>().HasKey(e => e.Id);
-        modelBuilder.Entity<AuditReport>().HasKey(e => e.Id);
+        modelBuilder.Entity<AuditReport>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.HasOne<Wallet>().WithMany().HasForeignKey(e => e.WalletId).OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }

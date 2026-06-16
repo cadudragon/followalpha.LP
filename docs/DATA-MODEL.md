@@ -5,6 +5,7 @@ Authored 2026-06-14. Binding contract for the persistence layer (EF Core code-fi
 ## 1. Principles (recap, enforced here)
 
 - Every persisted aggregate carries `TenantId` (constant `default` today; SaaS seam). All natural keys below are implicitly scoped by `TenantId`.
+  - **v1 realization (2026-06-16):** facts (`PriceBar`, `PoolSnapshot`, `TickLiquiditySnapshot`, `PositionEvent`) carry `TenantId` in their composite primary key. Working-state/identity rows (`Chain`, `Asset`, `Pool`, `Wallet`, `Position`, `AppSetting`, …) use globally-unique ids (chain/asset symbol, pool/wallet address, NFT token id) with `TenantId` as a column, not part of the key. This is **global ids by design** for single-tenant v1; making every key tenant-scoped is the SaaS gate. The §3 relationships are realized as enforced foreign keys in the EF schema (FK constraints, not just navattributes).
 - Three data natures, three behaviors:
   - **Facts** (on-chain/market observations): append-only, idempotent re-ingestion via natural keys. Never updated.
   - **Decision records** (decision log, annotations, intents): append-only. Reclassification/annotation = new row, original preserved.

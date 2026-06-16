@@ -2,6 +2,7 @@ using FollowAlpha.LP.Application;
 using FollowAlpha.LP.Application.Persistence;
 using FollowAlpha.LP.Infrastructure.Persistence;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace FollowAlpha.LP.Infrastructure.Tests.Persistence;
@@ -103,6 +104,7 @@ public class AppendOnlyStoreTests
     public async Task Intent_records_append_as_a_history()
     {
         using var db = new TestDatabase();
+        await SeedPositionAsync(db, "pos1");
         var store = new EfIntentRecordStore(db.Context);
 
         var original = Guid.NewGuid();
@@ -127,6 +129,58 @@ public class AppendOnlyStoreTests
         var position = await store.GetAsync(Tenancy.DefaultTenantId, "pos1");
         position!.Status.Should().Be("CLOSED");
         (await store.GetByWalletAsync(Tenancy.DefaultTenantId, "wallet1")).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Annotation_for_a_missing_entry_is_rejected_by_the_foreign_key()
+    {
+        using var db = new TestDatabase();
+        var log = new EfDecisionLog(db.Context);
+
+        var act = async () => await log.AppendAnnotationAsync(new DecisionAnnotation
+        {
+            Id = Guid.NewGuid(), DecisionLogEntryId = Guid.NewGuid(), CreatedAtUtc = T0, Text = "orphan",
+        });
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task Intent_superseding_a_missing_record_is_rejected_by_the_foreign_key()
+    {
+        using var db = new TestDatabase();
+        await SeedPositionAsync(db, "pos1");
+        var store = new EfIntentRecordStore(db.Context);
+
+        var act = async () => await store.AppendAsync(new IntentRecord
+        {
+            Id = Guid.NewGuid(), PositionId = "pos1", Intent = "ACCUMULATE", DeclaredAtUtc = T0, SupersedesIntentRecordId = Guid.NewGuid(),
+        });
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task Pool_snapshot_for_a_missing_pool_is_rejected_by_the_foreign_key()
+    {
+        using var db = new TestDatabase();
+        var store = new EfSnapshotStore(db.Context);
+
+        var snapshot = NewPoolSnapshot();
+        snapshot.PoolId = "ghost-pool";
+
+        var act = async () => await store.InsertPoolSnapshotIfAbsentAsync(snapshot);
+
+        await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    private static async Task SeedPositionAsync(TestDatabase db, string id)
+    {
+        db.Context.Positions.Add(new Position
+        {
+            Id = id, WalletId = TestDatabase.WalletId, PoolId = TestDatabase.PoolId, Status = "OPEN", OpenedAtUtc = T0,
+        });
+        await db.Context.SaveChangesAsync();
     }
 
     private static PoolSnapshot NewPoolSnapshot() => new()
