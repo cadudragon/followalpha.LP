@@ -42,3 +42,7 @@ dotnet_naming_style.i_prefix_style.capitalization = pascal_case
 
 # Quality rules that are noise in the host skeletons (Program.cs entry points)
 dotnet_diagnostic.CA1812.severity = none   # uninstantiated internal classes (marker types)
+
+# EF Core migrations are tool-generated; treat them as generated so analyzers/style don't gate them.
+[**/Persistence/Migrations/*.cs]
+generated_code = true

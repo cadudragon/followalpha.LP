@@ -1,9 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Adapters. References Application + Domain. NuGet adapters (EF Core, Nethereum, …) land in Phase 2. -->
+  <!-- Adapters. References Application + Domain. -->
   <ItemGroup>
     <ProjectReference Include="..\FollowAlpha.LP.Application\FollowAlpha.LP.Application.csproj" />
     <ProjectReference Include="..\FollowAlpha.LP.Domain\FollowAlpha.LP.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Persistence adapter (Phase 2.1). Design is build-time only (migrations); not propagated. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>
