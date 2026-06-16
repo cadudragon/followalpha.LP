@@ -1,0 +1,10 @@
+{
+  "data": {
+    "pool": {
+      "poolDayData": [
+        { "date": 1718064000, "volumeUSD": "5000000.5" },
+        { "date": 1717977600, "volumeUSD": "4200000.25" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "data": {
+    "ticks": [
+      { "tickIdx": "-199020", "liquidityNet": "1000", "liquidityGross": "1000" },
+      { "tickIdx": "-198960", "liquidityNet": "-500", "liquidityGross": "500" }
+    ]
+  }
+}

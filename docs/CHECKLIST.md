@@ -31,7 +31,7 @@ Read: `ARCHITECTURE.md` §4, `LP-KNOWLEDGE.md` §2-3 §6, `tools/oracle/README.m
 Read: `ARCHITECTURE.md` §6-7, `DATA-MODEL.md`, `TECH-STACK.md` §2, `NFR.md` §3-4.
 Also read: `OPEN-DECISIONS.md` for accepted deferrals, operational requirements, and analyst-review flags that must survive context resets.
 - [x] **2.1** EF Core + SQLite stores realizing `DATA-MODEL.md`; migrations; append-only repositories (insert+query only) for facts/decision/intent. Gate: append-only enforced and tested; idempotent insert-if-absent on natural keys.
-- [ ] **2.2** The Graph gateway adapter (`IPoolDataSource`): pool state, day volume, tick liquidity distribution; Uni v3 on Arbitrum + Base descriptors. Gate: integration test vs recorded fixtures; subgraph IDs recorded in PR.
+- [x] **2.2** The Graph gateway adapter (`IPoolDataSource`): pool state, day volume, tick liquidity distribution; Uni v3 on Arbitrum + Base descriptors. Gate: integration test vs recorded fixtures; subgraph IDs recorded in PR.
 - [ ] **2.3** Nethereum event reader (`IChainEventReader`): mint/burn/collect + gas for configured wallets. Gate: integration test vs recorded fixtures.
 - [ ] **2.4** Collector host (Worker + Cronos): scheduled pool/tick snapshots, price refresh, wallet sync; `/health` freshness. Gate: jobs idempotent (test); runs locally with env vars; no secret in repo.
 - [ ] **2.5** Deployment artifact (Dockerfile/compose or systemd) + `docs/DEPLOYMENT.md` runbook. Gate (agent): runbook complete. Tag `phase-2-done`.
