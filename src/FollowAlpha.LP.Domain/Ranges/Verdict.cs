@@ -6,9 +6,9 @@ namespace FollowAlpha.LP.Domain.Ranges;
 /// </summary>
 public enum Verdict
 {
+    /// <summary>Do not open the position. First member so <c>default(Verdict)</c> is fail-closed — never "open".</summary>
+    DoNotOpen,
+
     /// <summary>Open the position.</summary>
     Open,
-
-    /// <summary>Do not open the position.</summary>
-    DoNotOpen,
 }

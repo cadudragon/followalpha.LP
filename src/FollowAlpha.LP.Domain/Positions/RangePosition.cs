@@ -27,6 +27,11 @@ public sealed record RangePosition
             throw new ArgumentException("Lower tick must be strictly below the upper tick.", nameof(lowerTick));
         }
 
+        if (openedAtUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException("OpenedAtUtc must be UTC (zero offset).", nameof(openedAtUtc));
+        }
+
         LowerTick = lowerTick;
         UpperTick = upperTick;
         Liquidity = liquidity;

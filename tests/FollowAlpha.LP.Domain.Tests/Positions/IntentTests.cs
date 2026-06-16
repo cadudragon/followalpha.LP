@@ -17,6 +17,26 @@ public class IntentTests
     }
 
     [Fact]
+    public void Intent_record_requires_a_utc_timestamp()
+    {
+        var nonUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.FromHours(-3));
+        var act = () => new IntentRecord(Intent.Harvest, nonUtc, "opened");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Records_cannot_be_cast_to_a_mutable_array()
+    {
+        var history = new IntentHistory(new IntentRecord(Intent.Harvest, T0, "a"))
+            .Reclassify(new IntentRecord(Intent.Accumulate, T1, "b"));
+
+        // Append-only: the exposed history must not be the backing array.
+        (history.Records as IntentRecord[]).Should().BeNull();
+        history.Original.Intent.Should().Be(Intent.Harvest);
+        history.Current.Intent.Should().Be(Intent.Accumulate);
+    }
+
+    [Fact]
     public void New_history_has_one_record_and_is_not_reclassified()
     {
         var history = new IntentHistory(new IntentRecord(Intent.Harvest, T0, "two-sided around price"));

@@ -27,8 +27,12 @@ public sealed class IntentHistory
     /// <summary>True once the intent has been reclassified at least once.</summary>
     public bool IsReclassified => _records.Length > 1;
 
-    /// <summary>The full ordered history, oldest first.</summary>
-    public IReadOnlyList<IntentRecord> Records => _records;
+    /// <summary>
+    /// The full ordered history, oldest first. Returned as a read-only wrapper over the backing array,
+    /// not the array itself — a caller cannot cast it back to <c>IntentRecord[]</c> and rewrite history
+    /// (which would corrupt <see cref="Original"/>/<see cref="Current"/>). Append-only is the law here.
+    /// </summary>
+    public IReadOnlyList<IntentRecord> Records => Array.AsReadOnly(_records);
 
     /// <summary>Returns a new history with <paramref name="record"/> appended; this instance is unchanged.</summary>
     public IntentHistory Reclassify(IntentRecord record)

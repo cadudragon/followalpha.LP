@@ -16,7 +16,9 @@ public sealed record ChannelSimulation
         bool halted,
         decimal unrealizedPnlAtEnd)
     {
-        Events = events;
+        // Copy into an owned array: the official event/PnL series must not be adulterable after the
+        // fact by mutating the list the simulator passed in.
+        _events = [.. events];
         TotalRealizedPnl = totalRealizedPnl;
         TotalFees = totalFees;
         CompletedCrossings = completedCrossings;
@@ -25,8 +27,13 @@ public sealed record ChannelSimulation
         UnrealizedPnlAtEnd = unrealizedPnlAtEnd;
     }
 
-    /// <summary>Every event in chronological order.</summary>
-    public IReadOnlyList<ChannelEvent> Events { get; }
+    private readonly ChannelEvent[] _events;
+
+    /// <summary>
+    /// Every event in chronological order. Returned as a read-only wrapper over an owned array — it
+    /// cannot be cast back to a mutable collection and used to tamper with the official series.
+    /// </summary>
+    public IReadOnlyList<ChannelEvent> Events => Array.AsReadOnly(_events);
 
     /// <summary>Sum of realized cycle PnL (token1 numeraire).</summary>
     public decimal TotalRealizedPnl { get; }

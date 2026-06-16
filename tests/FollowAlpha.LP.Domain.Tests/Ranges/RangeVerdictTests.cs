@@ -86,4 +86,12 @@ public class RangeVerdictTests
         var act = () => new RangeVerdictPolicy(0m, 0m);
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void Default_verdict_is_fail_closed()
+    {
+        // A recommendation tool must never default to "open".
+        default(Verdict).Should().Be(Verdict.DoNotOpen);
+        default(RangeVerdict).Verdict.Should().Be(Verdict.DoNotOpen);
+    }
 }

@@ -21,6 +21,7 @@ __pycache__/
 *.db-wal
 .env
 .env.*
+!.env.example
 appsettings.*.local.json
 
 # IDE

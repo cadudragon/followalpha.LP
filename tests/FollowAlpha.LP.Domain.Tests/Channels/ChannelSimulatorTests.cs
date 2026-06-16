@@ -115,6 +115,16 @@ public class ChannelSimulatorTests
     }
 
     [Fact]
+    public void Events_cannot_be_cast_to_a_mutable_collection()
+    {
+        var sim = ChannelSimulator.Run(Policy(), [100m, 121m], Zeros(2), totalCapital: 110m);
+
+        // The official series must not be adulterable after the fact.
+        (sim.Events as ChannelEvent[]).Should().BeNull();
+        (sim.Events as List<ChannelEvent>).Should().BeNull();
+    }
+
+    [Fact]
     public void Run_validates_series_and_capital()
     {
         var mismatched = () => ChannelSimulator.Run(Policy(), [100m, 121m], Zeros(1), 110m);

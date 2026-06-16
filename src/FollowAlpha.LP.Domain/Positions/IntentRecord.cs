@@ -16,6 +16,11 @@ public readonly record struct IntentRecord
             throw new ArgumentException("An intent record must carry a reason.", nameof(reason));
         }
 
+        if (assignedAtUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException("AssignedAtUtc must be UTC (zero offset).", nameof(assignedAtUtc));
+        }
+
         Intent = intent;
         AssignedAtUtc = assignedAtUtc;
         Reason = reason;

@@ -28,6 +28,15 @@ public class RangePositionTests
     }
 
     [Fact]
+    public void Constructor_requires_a_utc_opened_at()
+    {
+        var nonUtc = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.FromHours(2));
+        var act = () => new RangePosition(
+            new Tick(-1000), new Tick(1000), new Liquidity(BigInteger.One), nonUtc, FeeTier.Medium, new TokenDecimals(18, 18));
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
     public void Below_range_the_position_is_all_token0()
     {
         var v = Position().ValueAt(new PoolPrice(0.5m)); // below lower bound (~0.905)

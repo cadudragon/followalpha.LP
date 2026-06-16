@@ -16,7 +16,7 @@ Rule: never tick a box you didn't prove. The checkbox state in git is the projec
 
 ## Phase 0 — Skeleton & guardrails  · tag `phase-0-done`
 Read: `ARCHITECTURE.md` §3, §10.
-- [x] **0.1** Solution `.slnx` + the 9 empty-but-compiling projects (src + tests) per §3; `.editorconfig`, nullable on, warnings-as-errors, analyzers. Gate: `dotnet build` green.
+- [x] **0.1** Solution `.slnx` + the empty-but-compiling projects (6 src + 3 tests; the 4th test project, `Architecture.Tests`, is added in 0.2 → 10 total) per §3; `.editorconfig`, nullable on, warnings-as-errors, analyzers. Gate: `dotnet build` green.
 - [x] **0.2** CI (GitHub Actions: build + test on push) + architecture-test project (NetArchTest) asserting dependency direction and Domain purity. Gate: CI green; a temporary forbidden reference makes arch tests fail (show it, revert). Tag `phase-0-done`.
 
 ## Phase 1 — Domain kernel  · precondition `phase-0-done` · tag `phase-1-done`
