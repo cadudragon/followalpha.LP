@@ -67,6 +67,29 @@ public interface IDecisionLog
     Task<IReadOnlyList<DecisionLogEntry>> GetEntriesByPoolAsync(string tenantId, string poolId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Working-state store for wallet position-NFT ownership intervals (not append-only — rebuildable from
+/// chain, upserted as intervals open/close). Drives owner-at-time attribution in the wallet sync.
+/// </summary>
+public interface IWalletOwnershipStore
+{
+    /// <summary>All ownership intervals for a wallet on a chain (any tokenId), ascending by (TokenId, Seq).</summary>
+    Task<IReadOnlyList<WalletPositionOwnership>> GetByWalletAsync(string tenantId, string chainId, string walletId, CancellationToken cancellationToken = default);
+
+    /// <summary>Inserts or updates an interval by its key (TenantId, ChainId, WalletId, TokenId, Seq).</summary>
+    Task UpsertAsync(WalletPositionOwnership interval, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Working-state store for the per-(chain, wallet) event-sync high-water mark (not append-only).</summary>
+public interface IWalletSyncCursorStore
+{
+    /// <summary>The cursor for a wallet on a chain, or null if it has never synced.</summary>
+    Task<WalletSyncCursor?> GetAsync(string tenantId, string chainId, string walletId, CancellationToken cancellationToken = default);
+
+    /// <summary>Inserts or updates the cursor by its key (TenantId, ChainId, WalletId).</summary>
+    Task SetAsync(WalletSyncCursor cursor, CancellationToken cancellationToken = default);
+}
+
 /// <summary>The rebuildable <see cref="Position"/> projection — upsert + query (not append-only).</summary>
 public interface IPositionStore
 {

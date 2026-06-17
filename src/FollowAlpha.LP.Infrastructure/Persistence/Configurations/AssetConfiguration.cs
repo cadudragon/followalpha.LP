@@ -9,5 +9,6 @@ internal sealed class AssetConfiguration : IEntityTypeConfiguration<Asset>
     public void Configure(EntityTypeBuilder<Asset> builder)
     {
         builder.HasKey(e => e.Id);
+        builder.HasOne<Chain>().WithMany().HasForeignKey(e => e.ChainId).OnDelete(DeleteBehavior.Restrict);
     }
 }

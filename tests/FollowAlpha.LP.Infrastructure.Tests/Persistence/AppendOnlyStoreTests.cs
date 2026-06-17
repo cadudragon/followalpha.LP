@@ -198,7 +198,8 @@ public class AppendOnlyStoreTests
     {
         ChainId = "arbitrum", TxHash = "0xabc", LogIndex = 0, WalletId = "wallet1", PoolId = "pool1",
         EventType = "MINT", TickLower = -100, TickUpper = 100, LiquidityDelta = "1000",
-        Amount0 = 1m, Amount1 = 1m, FeesCollected0 = 0m, FeesCollected1 = 0m, GasCostUsd = 1m, BlockTimeUtc = T0,
+        Amount0 = 1m, Amount1 = 1m, FeesCollected0 = 0m, FeesCollected1 = 0m,
+        GasUsed = "21000", EffectiveGasPriceWei = "1000000000", NativeGasCostWei = "21000000000000", GasCostUsd = null, BlockTimeUtc = T0,
     };
 
     private static DecisionLogEntry NewDecision(Guid id, string hash, DateTimeOffset createdAt) => new()

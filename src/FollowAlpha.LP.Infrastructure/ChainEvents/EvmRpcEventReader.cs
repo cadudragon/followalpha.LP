@@ -4,6 +4,7 @@ using FollowAlpha.LP.Application.ChainEvents;
 using FollowAlpha.LP.Application.Protocols;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Contracts;
+using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 
 namespace FollowAlpha.LP.Infrastructure.ChainEvents;
@@ -73,6 +74,57 @@ public sealed class EvmRpcEventReader(IDexProtocolRegistry registry, IEvmRpc rpc
 
         return [.. results.OrderBy(r => r.BlockNumber).ThenBy(r => r.LogIndex)];
     }
+
+    public async Task<IReadOnlyList<string>> DiscoverWalletTokenIdsAsync(
+        string chainId, string walletAddress, long fromBlock, long toBlock, CancellationToken cancellationToken = default)
+    {
+        if (fromBlock > toBlock)
+        {
+            throw new ArgumentException("fromBlock must be less than or equal to toBlock.", nameof(fromBlock));
+        }
+
+        var positionManager = registry.GetByChain(chainId).PositionManagerAddress;
+        var logs = await rpc.GetTransferLogsAsync(chainId, positionManager, fromAddress: null, toAddress: walletAddress, fromBlock, toBlock, cancellationToken);
+
+        // The tokenId is the third indexed topic of an ERC-721 Transfer.
+        return [.. logs
+            .Select(log => new HexBigInteger(log.Topics[3].ToString()!).Value)
+            .Distinct()
+            .OrderBy(id => id)
+            .Select(id => id.ToString(CultureInfo.InvariantCulture))];
+    }
+
+    public async Task<IReadOnlyList<WalletNftTransfer>> DiscoverWalletTransfersAsync(
+        string chainId, string walletAddress, long fromBlock, long toBlock, CancellationToken cancellationToken = default)
+    {
+        if (fromBlock > toBlock)
+        {
+            throw new ArgumentException("fromBlock must be less than or equal to toBlock.", nameof(fromBlock));
+        }
+
+        var positionManager = registry.GetByChain(chainId).PositionManagerAddress;
+
+        // Two filters: a single eth_getLogs ANDs topic positions, so "to == wallet" and "from == wallet"
+        // are separate queries (acquisitions vs releases). A self-transfer would appear in both; harmless —
+        // the ownership fold dedupes by (block, logIndex).
+        var inbound = await rpc.GetTransferLogsAsync(chainId, positionManager, fromAddress: null, toAddress: walletAddress, fromBlock, toBlock, cancellationToken);
+        var outbound = await rpc.GetTransferLogsAsync(chainId, positionManager, fromAddress: walletAddress, toAddress: null, fromBlock, toBlock, cancellationToken);
+
+        var transfers = new List<WalletNftTransfer>(inbound.Count + outbound.Count);
+        transfers.AddRange(inbound.Select(log => ToTransfer(log, TransferDirection.In)));
+        transfers.AddRange(outbound.Select(log => ToTransfer(log, TransferDirection.Out)));
+
+        return [.. transfers.OrderBy(t => t.BlockNumber).ThenBy(t => t.LogIndex)];
+    }
+
+    private static WalletNftTransfer ToTransfer(FilterLog log, TransferDirection direction) => new(
+        TokenId: new HexBigInteger(log.Topics[3].ToString()!).Value.ToString(CultureInfo.InvariantCulture),
+        BlockNumber: (long)log.BlockNumber.Value,
+        LogIndex: (int)log.LogIndex.Value,
+        Direction: direction);
+
+    public Task<long> GetChainHeadBlockAsync(string chainId, CancellationToken cancellationToken = default) =>
+        rpc.GetLatestBlockNumberAsync(chainId, cancellationToken);
 
     private Task<IReadOnlyList<FilterLog>> GetLogsAsync<TEventDto>(
         string chainId, string positionManager, IReadOnlyCollection<string> tokenIds, long fromBlock, long toBlock, CancellationToken cancellationToken)

@@ -44,5 +44,15 @@ dotnet_naming_style.i_prefix_style.capitalization = pascal_case
 dotnet_diagnostic.CA1812.severity = none   # uninstantiated internal classes (marker types)
 
 # EF Core migrations are tool-generated; treat them as generated so analyzers/style don't gate them.
+# generated_code alone isn't honored by every analyzer band (e.g. CA1861 still fires on the inline
+# new[] { ... } index columns EF emits), so the perf micro-opt rules that hit generated migrations are
+# silenced explicitly. We never hand-edit migrations, and Up/Down run once — the perf rules are noise here.
 [**/Persistence/Migrations/*.cs]
 generated_code = true
+dotnet_diagnostic.CA1861.severity = none
+
+# Hosts do simple structured logging at human-decision cadence; the high-performance logging analyzers
+# (LoggerMessage delegates / deferred argument evaluation) are noise here, not in Domain/Application.
+[src/FollowAlpha.LP.{Api,Cli,Collector}/**.cs]
+dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1873.severity = none

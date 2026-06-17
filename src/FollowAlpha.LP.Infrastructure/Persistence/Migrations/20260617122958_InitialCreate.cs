@@ -42,22 +42,6 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Assets",
-                columns: table => new
-                {
-                    Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Symbol = table.Column<string>(type: "TEXT", nullable: false),
-                    Decimals = table.Column<int>(type: "INTEGER", nullable: false),
-                    ChainlinkFeedAddress = table.Column<string>(type: "TEXT", nullable: true),
-                    InWatchlist = table.Column<bool>(type: "INTEGER", nullable: false),
-                    TenantId = table.Column<string>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Assets", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "BacktestRuns",
                 columns: table => new
                 {
@@ -107,27 +91,25 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PriceBars",
+                name: "Assets",
                 columns: table => new
                 {
-                    TenantId = table.Column<string>(type: "TEXT", nullable: false),
-                    AssetId = table.Column<string>(type: "TEXT", nullable: false),
-                    Resolution = table.Column<string>(type: "TEXT", nullable: false),
-                    OpenTimeUtc = table.Column<long>(type: "INTEGER", nullable: false),
-                    Open = table.Column<decimal>(type: "TEXT", nullable: false),
-                    High = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Low = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Close = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Volume = table.Column<decimal>(type: "TEXT", nullable: false),
-                    Source = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
+                    ChainId = table.Column<string>(type: "TEXT", nullable: false),
+                    Address = table.Column<string>(type: "TEXT", nullable: false),
+                    Symbol = table.Column<string>(type: "TEXT", nullable: false),
+                    Decimals = table.Column<int>(type: "INTEGER", nullable: false),
+                    ChainlinkFeedAddress = table.Column<string>(type: "TEXT", nullable: true),
+                    InWatchlist = table.Column<bool>(type: "INTEGER", nullable: false),
+                    TenantId = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PriceBars", x => new { x.TenantId, x.AssetId, x.Resolution, x.OpenTimeUtc });
+                    table.PrimaryKey("PK_Assets", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_PriceBars_Assets_AssetId",
-                        column: x => x.AssetId,
-                        principalTable: "Assets",
+                        name: "FK_Assets_Chains_ChainId",
+                        column: x => x.ChainId,
+                        principalTable: "Chains",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -173,6 +155,89 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                         name: "FK_AuditReports_Wallets_WalletId",
                         column: x => x.WalletId,
                         principalTable: "Wallets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WalletPositionOwnerships",
+                columns: table => new
+                {
+                    ChainId = table.Column<string>(type: "TEXT", nullable: false),
+                    WalletId = table.Column<string>(type: "TEXT", nullable: false),
+                    TokenId = table.Column<string>(type: "TEXT", nullable: false),
+                    Seq = table.Column<int>(type: "INTEGER", nullable: false),
+                    TenantId = table.Column<string>(type: "TEXT", nullable: false),
+                    AcquiredBlock = table.Column<long>(type: "INTEGER", nullable: false),
+                    AcquiredLogIndex = table.Column<int>(type: "INTEGER", nullable: false),
+                    ReleasedBlock = table.Column<long>(type: "INTEGER", nullable: true),
+                    ReleasedLogIndex = table.Column<int>(type: "INTEGER", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WalletPositionOwnerships", x => new { x.ChainId, x.WalletId, x.TokenId, x.Seq });
+                    table.ForeignKey(
+                        name: "FK_WalletPositionOwnerships_Chains_ChainId",
+                        column: x => x.ChainId,
+                        principalTable: "Chains",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WalletPositionOwnerships_Wallets_WalletId",
+                        column: x => x.WalletId,
+                        principalTable: "Wallets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WalletSyncCursors",
+                columns: table => new
+                {
+                    ChainId = table.Column<string>(type: "TEXT", nullable: false),
+                    WalletId = table.Column<string>(type: "TEXT", nullable: false),
+                    TenantId = table.Column<string>(type: "TEXT", nullable: false),
+                    LastScannedBlock = table.Column<long>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WalletSyncCursors", x => new { x.ChainId, x.WalletId });
+                    table.ForeignKey(
+                        name: "FK_WalletSyncCursors_Chains_ChainId",
+                        column: x => x.ChainId,
+                        principalTable: "Chains",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_WalletSyncCursors_Wallets_WalletId",
+                        column: x => x.WalletId,
+                        principalTable: "Wallets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PriceBars",
+                columns: table => new
+                {
+                    TenantId = table.Column<string>(type: "TEXT", nullable: false),
+                    AssetId = table.Column<string>(type: "TEXT", nullable: false),
+                    Resolution = table.Column<string>(type: "TEXT", nullable: false),
+                    OpenTimeUtc = table.Column<long>(type: "INTEGER", nullable: false),
+                    Open = table.Column<decimal>(type: "TEXT", nullable: false),
+                    High = table.Column<decimal>(type: "TEXT", nullable: false),
+                    Low = table.Column<decimal>(type: "TEXT", nullable: false),
+                    Close = table.Column<decimal>(type: "TEXT", nullable: false),
+                    Volume = table.Column<decimal>(type: "TEXT", nullable: false),
+                    Source = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PriceBars", x => new { x.TenantId, x.AssetId, x.Resolution, x.OpenTimeUtc });
+                    table.ForeignKey(
+                        name: "FK_PriceBars_Assets_AssetId",
+                        column: x => x.AssetId,
+                        principalTable: "Assets",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
@@ -293,7 +358,10 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     Amount1 = table.Column<decimal>(type: "TEXT", nullable: false),
                     FeesCollected0 = table.Column<decimal>(type: "TEXT", nullable: false),
                     FeesCollected1 = table.Column<decimal>(type: "TEXT", nullable: false),
-                    GasCostUsd = table.Column<decimal>(type: "TEXT", nullable: false),
+                    GasUsed = table.Column<string>(type: "TEXT", nullable: false),
+                    EffectiveGasPriceWei = table.Column<string>(type: "TEXT", nullable: true),
+                    NativeGasCostWei = table.Column<string>(type: "TEXT", nullable: true),
+                    GasCostUsd = table.Column<decimal>(type: "TEXT", nullable: true),
                     BlockTimeUtc = table.Column<long>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
@@ -417,6 +485,11 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Assets_ChainId",
+                table: "Assets",
+                column: "ChainId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AuditReports_WalletId",
                 table: "AuditReports",
                 column: "WalletId");
@@ -510,6 +583,16 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                 name: "IX_TickLiquiditySnapshots_PoolId",
                 table: "TickLiquiditySnapshots",
                 column: "PoolId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WalletPositionOwnerships_WalletId",
+                table: "WalletPositionOwnerships",
+                column: "WalletId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WalletSyncCursors_WalletId",
+                table: "WalletSyncCursors",
+                column: "WalletId");
         }
 
         /// <inheritdoc />
@@ -544,6 +627,12 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "TickLiquiditySnapshots");
+
+            migrationBuilder.DropTable(
+                name: "WalletPositionOwnerships");
+
+            migrationBuilder.DropTable(
+                name: "WalletSyncCursors");
 
             migrationBuilder.DropTable(
                 name: "DecisionLogEntries");

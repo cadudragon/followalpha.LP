@@ -159,6 +159,57 @@ public sealed class EfDecisionLog(AppDbContext db) : IDecisionLog
             .ToListAsync(cancellationToken);
 }
 
+/// <summary>Working-state store for wallet position-NFT ownership intervals (upsert + query).</summary>
+public sealed class EfWalletOwnershipStore(AppDbContext db) : IWalletOwnershipStore
+{
+    public async Task<IReadOnlyList<WalletPositionOwnership>> GetByWalletAsync(string tenantId, string chainId, string walletId, CancellationToken cancellationToken = default) =>
+        await db.WalletPositionOwnerships
+            .Where(x => x.TenantId == tenantId && x.ChainId == chainId && x.WalletId == walletId)
+            .OrderBy(x => x.TokenId).ThenBy(x => x.Seq)
+            .ToListAsync(cancellationToken);
+
+    public async Task UpsertAsync(WalletPositionOwnership interval, CancellationToken cancellationToken = default)
+    {
+        var existing = await db.WalletPositionOwnerships.FirstOrDefaultAsync(
+            x => x.ChainId == interval.ChainId && x.WalletId == interval.WalletId && x.TokenId == interval.TokenId && x.Seq == interval.Seq,
+            cancellationToken);
+        if (existing is null)
+        {
+            db.WalletPositionOwnerships.Add(interval);
+        }
+        else
+        {
+            db.Entry(existing).CurrentValues.SetValues(interval);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+}
+
+/// <summary>Working-state store for the per-(chain, wallet) event-sync high-water mark (upsert + query).</summary>
+public sealed class EfWalletSyncCursorStore(AppDbContext db) : IWalletSyncCursorStore
+{
+    public async Task<WalletSyncCursor?> GetAsync(string tenantId, string chainId, string walletId, CancellationToken cancellationToken = default) =>
+        await db.WalletSyncCursors.FirstOrDefaultAsync(
+            x => x.TenantId == tenantId && x.ChainId == chainId && x.WalletId == walletId, cancellationToken);
+
+    public async Task SetAsync(WalletSyncCursor cursor, CancellationToken cancellationToken = default)
+    {
+        var existing = await db.WalletSyncCursors.FirstOrDefaultAsync(
+            x => x.ChainId == cursor.ChainId && x.WalletId == cursor.WalletId, cancellationToken);
+        if (existing is null)
+        {
+            db.WalletSyncCursors.Add(cursor);
+        }
+        else
+        {
+            db.Entry(existing).CurrentValues.SetValues(cursor);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+}
+
 /// <summary>The rebuildable position projection (upsert).</summary>
 public sealed class EfPositionStore(AppDbContext db) : IPositionStore
 {

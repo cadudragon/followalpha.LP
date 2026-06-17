@@ -21,7 +21,7 @@ Authored 2026-06-14. Binding contract for the persistence layer (EF Core code-fi
 
 **DexProtocol** — `Id` (pk, e.g. `uniswap-v3`), `ChainId` (fk), `SubgraphId`, `PositionManagerAddress`, `FeeTiers` (json), `Enabled`. (Adding a DEX/chain = new row, per `IDexProtocolRegistry`.)
 
-**Asset** — `Id` (pk, e.g. `ETH`), `Symbol`, `Decimals`, `ChainlinkFeedAddress` (nullable), `InWatchlist` (bool). The watchlist is `Asset` rows flagged `InWatchlist`.
+**Asset** — `Id` (pk, **chain-aware** = `{ChainId}:{tokenAddress}`, lower-cased), `ChainId` (fk), `Address` (token contract address), `Symbol`, `Decimals`, `ChainlinkFeedAddress` (nullable), `InWatchlist` (bool). The watchlist is `Asset` rows flagged `InWatchlist`. **The id is chain-aware (decided 2026-06-17):** the same symbol (e.g. `WETH`) has different contract addresses on Arbitrum and Base, so a symbol-only id would collide; `PriceBar.AssetId` therefore points at this chain-aware id, and the pair price for an analysis derives from `token1USD/token0USD` (the exact pool price stays in `PoolSnapshot`/tick/`sqrtPrice`).
 
 **Pool** — `Id` (pk = chain + pool address), `ChainId` (fk), `DexProtocolId` (fk), `Token0AssetId` (fk), `Token1AssetId` (fk), `FeeTier`, `TickSpacing`, `Address`, `InWatchlist` (bool).
 
@@ -31,6 +31,10 @@ Authored 2026-06-14. Binding contract for the persistence layer (EF Core code-fi
 
 **AppSetting** — `Key` (pk), `Value`. (Notification channel config, watchlist params, etc.)
 
+**WalletPositionOwnership** — composite key (`ChainId`, `WalletId`, `TokenId`, `Seq`). Fields: `AcquiredBlock`, `AcquiredLogIndex`, `ReleasedBlock` (nullable), `ReleasedLogIndex` (nullable). The ownership intervals of a position NFT for a wallet, built incrementally from NPM ERC-721 `Transfer` logs (in = acquired, out = released). **Owner-at-time enforcement (decided 2026-06-17):** a `PositionEvent` is attributed to a wallet only when its `(block, logIndex)` falls inside an open interval `[acquired, released)` for that wallet+tokenId; this keeps the append-only audit truth from being contaminated when a position is transferred between/out of wallets. `Seq` orders re-acquisitions of the same tokenId. Working state (rebuildable from chain), not append-only.
+
+**WalletSyncCursor** — composite key (`ChainId`, `WalletId`). Field: `LastScannedBlock`. The high-water mark of the wallet event-sync (so the 15-minute job resumes incrementally instead of rescanning from genesis). Advanced **only after** a window syncs successfully; the next window starts at `max(configFromBlock, LastScannedBlock + 1 − reorgBuffer)`. Working state, not append-only.
+
 ### Facts (append-only, idempotent)
 
 **PriceBar** — natural key (`AssetId`, `Resolution`, `OpenTimeUtc`). Fields: `Open/High/Low/Close` (decimal), `Volume`, `Source`. Spot OHLCV for assets.
@@ -39,7 +43,7 @@ Authored 2026-06-14. Binding contract for the persistence layer (EF Core code-fi
 
 **TickLiquiditySnapshot** — natural key (`PoolId`, `AsOfUtc`, `Tick`). Fields: `LiquidityNet` (text), `LiquidityGross` (text). The per-tick distribution — the data that cannot be reconstructed retroactively (drives the always-on Collector).
 
-**PositionEvent** — natural key (`ChainId`, `TxHash`, `LogIndex`). Fields: `WalletId` (fk), `PoolId` (fk), `EventType` (`MINT`|`BURN`|`COLLECT`), `TickLower`, `TickUpper`, `LiquidityDelta` (text), `Amount0`, `Amount1`, `FeesCollected0`, `FeesCollected1`, `GasCostUsd`, `BlockTimeUtc`. Source of audit truth (fees reconciled against `COLLECT`).
+**PositionEvent** — natural key (`ChainId`, `TxHash`, `LogIndex`). Fields: `WalletId` (fk), `PoolId` (fk), `EventType` (`MINT`|`BURN`|`COLLECT`), `TickLower`, `TickUpper`, `LiquidityDelta` (text), `Amount0`, `Amount1`, `FeesCollected0`, `FeesCollected1`, **native gas raw** (`GasUsed` text, `EffectiveGasPriceWei` text nullable, `NativeGasCostWei` text nullable), `GasCostUsd` (decimal, **nullable**), `BlockTimeUtc`. Source of audit truth (fees reconciled against `COLLECT`). **Gas (decided 2026-06-17):** the irreversible on-chain native gas is persisted raw; `GasCostUsd` stays null until a reliable historical price source lands — never zeroed or filled with a current-price guess that would contaminate an audit.
 
 ### Position & intent
 
@@ -65,6 +69,7 @@ Authored 2026-06-14. Binding contract for the persistence layer (EF Core code-fi
 Chain 1───* DexProtocol 1───* Pool *───1 Asset (token0/token1)
 Chain 1───* Asset
 Wallet 1───* Position *───1 Pool
+Wallet 1───* WalletPositionOwnership ; Wallet 1───* WalletSyncCursor (per chain)
 Position 1───* IntentRecord (append-only chain via SupersedesIntentRecordId)
 Position 1───* PositionEvent
 Pool 1───* PoolSnapshot ; Pool 1───* TickLiquiditySnapshot

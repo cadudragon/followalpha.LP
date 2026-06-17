@@ -73,6 +73,14 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChainId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ChainlinkFeedAddress")
                         .HasColumnType("TEXT");
 
@@ -91,6 +99,8 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ChainId");
 
                     b.ToTable("Assets");
                 });
@@ -503,6 +513,9 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     b.Property<long>("BlockTimeUtc")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("EffectiveGasPriceWei")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -513,11 +526,18 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("FeesCollected1")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("GasCostUsd")
+                    b.Property<decimal?>("GasCostUsd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GasUsed")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LiquidityDelta")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NativeGasCostWei")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PoolId")
@@ -636,6 +656,74 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Wallets");
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.WalletPositionOwnership", b =>
+                {
+                    b.Property<string>("ChainId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WalletId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("AcquiredBlock")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AcquiredLogIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("ReleasedBlock")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ReleasedLogIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ChainId", "WalletId", "TokenId", "Seq");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("WalletPositionOwnerships");
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.WalletSyncCursor", b =>
+                {
+                    b.Property<string>("ChainId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WalletId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("LastScannedBlock")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ChainId", "WalletId");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("WalletSyncCursors");
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.Asset", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Chain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.AuditReport", b =>
@@ -768,6 +856,36 @@ namespace FollowAlpha.LP.Infrastructure.Persistence.Migrations
                     b.HasOne("FollowAlpha.LP.Application.Persistence.Pool", null)
                         .WithMany()
                         .HasForeignKey("PoolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.WalletPositionOwnership", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Chain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FollowAlpha.LP.Application.Persistence.WalletSyncCursor", b =>
+                {
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Chain", null)
+                        .WithMany()
+                        .HasForeignKey("ChainId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FollowAlpha.LP.Application.Persistence.Wallet", null)
+                        .WithMany()
+                        .HasForeignKey("WalletId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

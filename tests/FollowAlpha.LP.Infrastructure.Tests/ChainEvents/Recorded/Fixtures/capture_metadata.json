@@ -1,0 +1,26 @@
+{
+  "capturedAtUtc": "2026-06-17T00:00:00Z",
+  "source": "Public Arbitrum One RPC (https://arb1.arbitrum.io/rpc)",
+  "note": "Captured from a public, no-key RPC endpoint; no secret is present in the fixture or its URL. Regenerate by running the env-gated test with FOLLOWALPHA_RPC_SMOKE=1.",
+  "chainId": "arbitrum",
+  "wallet": "0xa3660aBb49644876714611122b1618faA07e0281 (config/wallets.json — audit target)",
+  "position": {
+    "tokenId": "5531934",
+    "pool": "WETH/USDC 0.05% (0xc6962004f452be9203591991d15f6b388e09e8d0)",
+    "token0": "WETH 0x82af49447d8a07e3bd95bd0d56f35241523fbab1 (18 decimals)",
+    "token1": "USDC 0xaf88d065e77c8cc2239327c5edb3a432268e5831 (6 decimals)"
+  },
+  "covers": [
+    "eth_getLogs ERC-721 Transfer(to=wallet) — tokenId discovery",
+    "eth_getLogs IncreaseLiquidity / DecreaseLiquidity / Collect — position events",
+    "eth_call positions(tokenId) — ticks + token pair + fee",
+    "eth_call factory.getPool — pool address",
+    "eth_call decimals() (token0 + token1) — human amount scaling",
+    "eth_getTransactionReceipt — native gas",
+    "eth_getBlockByNumber — block timestamp",
+    "eth_blockNumber — chain head"
+  ],
+  "fixtures": [
+    "arbitrum_position_5531934.json"
+  ]
+}

@@ -82,7 +82,7 @@ public class TheGraphPoolDataSourceTests
     {
         var registry = new ConfiguredDexProtocolRegistry(
         [
-            new DexProtocolDescriptor("arbitrum", "uniswap-v3", "SUBID", "QmDeploymentPinned", "0xpm", [3000], "test", new DateOnly(2026, 6, 16)),
+            new DexProtocolDescriptor("arbitrum", "uniswap-v3", "SUBID", "QmDeploymentPinned", "0xpm", "0xfactory", [3000], "test", new DateOnly(2026, 6, 16)),
         ]);
         var handler = new StubHttpMessageHandler(LoadFixture("pool_state.json"));
         var source = new TheGraphPoolDataSource(new HttpClient(handler), registry, new TheGraphGatewayOptions { ApiKey = "test-key" });

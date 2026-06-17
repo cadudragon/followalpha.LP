@@ -136,4 +136,23 @@ public class EvmRpcEventReaderTests
         var act = async () => await Reader(new FakeEvmRpc()).ReadPositionEventsAsync("ethereum", TokenId5, 0, 1000);
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
+
+    [Fact]
+    public async Task Discovers_inbound_and_outbound_transfers_with_direction_ordered()
+    {
+        const string Wallet = "0x2222222222222222222222222222222222222222";
+        const string Other = "0x3333333333333333333333333333333333333333";
+        var rpc = new FakeEvmRpc();
+        rpc.InboundTransferLogs.Add(NpmLogFactory.Transfer(5, from: Other, to: Wallet, blockNumber: 100, logIndex: 1));
+        rpc.OutboundTransferLogs.Add(NpmLogFactory.Transfer(5, from: Wallet, to: Other, blockNumber: 200, logIndex: 3));
+
+        var transfers = await Reader(rpc).DiscoverWalletTransfersAsync("arbitrum", Wallet, 0, 1000);
+
+        transfers.Select(t => (t.TokenId, t.BlockNumber, t.LogIndex, t.Direction)).Should().Equal(
+            ("5", 100, 1, TransferDirection.In),
+            ("5", 200, 3, TransferDirection.Out));
+
+        // Each direction is queried with its own filter (a single eth_getLogs ANDs topics).
+        rpc.TransferRequests.Should().Contain((null, Wallet)).And.Contain((Wallet, null));
+    }
 }

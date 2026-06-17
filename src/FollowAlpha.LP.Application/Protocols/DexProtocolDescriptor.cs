@@ -14,6 +14,7 @@ public sealed record DexProtocolDescriptor(
     string SubgraphId,
     string? SubgraphDeploymentId,
     string PositionManagerAddress,
+    string FactoryAddress,
     IReadOnlyList<int> FeeTiers,
     string Source,
     DateOnly RecordedOnUtc);

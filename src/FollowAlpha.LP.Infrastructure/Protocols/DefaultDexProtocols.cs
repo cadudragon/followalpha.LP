@@ -22,6 +22,8 @@ public static class DefaultDexProtocols
             SubgraphId: "FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM",
             SubgraphDeploymentId: "QmZ5uwhnwsJXAQGYEF8qKPQ85iVhYAcVZcZAPfrF7ZNb9z",
             PositionManagerAddress: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+            // Uniswap v3 canonical factory (consumed by the 2.4 position-state reader's getPool).
+            FactoryAddress: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
             FeeTiers: [100, 500, 3000, 10000],
             Source: "The Graph Explorer",
             RecordedOnUtc: new DateOnly(2026, 6, 16)),
@@ -31,6 +33,8 @@ public static class DefaultDexProtocols
             SubgraphId: "96eJ9Go8gFjySRGnndG7EYxThaiwVDV8BYPp1TMDcoYh",
             SubgraphDeploymentId: "QmPb76mWQkpwbVgCrCwtFkXCy81o929RNNqbhW1pLpXACe",
             PositionManagerAddress: "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+            // Uniswap v3 factory on Base (distinct from the canonical address).
+            FactoryAddress: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
             FeeTiers: [100, 500, 3000, 10000],
             Source: "The Graph Explorer",
             RecordedOnUtc: new DateOnly(2026, 6, 16)),

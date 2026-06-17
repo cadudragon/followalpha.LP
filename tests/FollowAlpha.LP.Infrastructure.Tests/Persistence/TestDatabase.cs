@@ -48,8 +48,8 @@ internal sealed class TestDatabase : IDisposable
     {
         Context.Chains.Add(new Chain { Id = ChainId, Name = "Arbitrum One", RpcEnvVarName = "RPC_URL_ARBITRUM", Enabled = true });
         Context.DexProtocols.Add(new DexProtocol { Id = DexId, ChainId = ChainId, SubgraphId = "sub", PositionManagerAddress = "0xpm", FeeTiers = "[500,3000]", Enabled = true });
-        Context.Assets.Add(new Asset { Id = EthId, Symbol = "ETH", Decimals = 18 });
-        Context.Assets.Add(new Asset { Id = UsdcId, Symbol = "USDC", Decimals = 6 });
+        Context.Assets.Add(new Asset { Id = EthId, ChainId = ChainId, Address = "0xeth", Symbol = "ETH", Decimals = 18 });
+        Context.Assets.Add(new Asset { Id = UsdcId, ChainId = ChainId, Address = "0xusdc", Symbol = "USDC", Decimals = 6 });
         Context.Pools.Add(new Pool
         {
             Id = PoolId, ChainId = ChainId, DexProtocolId = DexId, Token0AssetId = UsdcId, Token1AssetId = EthId,

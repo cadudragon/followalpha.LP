@@ -21,6 +21,8 @@
   <ItemGroup>
     <!-- Recorded The Graph gateway fixtures (no live network / no GRAPH_API_KEY in tests). -->
     <Content Include="TheGraph\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Recorded public JSON-RPC capture (no live network / no key) for the transport-level replay test. -->
+    <Content Include="ChainEvents\Recorded\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

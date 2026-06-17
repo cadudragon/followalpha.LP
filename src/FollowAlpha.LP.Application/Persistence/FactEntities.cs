@@ -72,6 +72,17 @@ public sealed class PositionEvent
     public decimal Amount1 { get; set; }
     public decimal FeesCollected0 { get; set; }
     public decimal FeesCollected1 { get; set; }
-    public decimal GasCostUsd { get; set; }
+
+    // Native gas is persisted raw now (the irreversible on-chain fact); USD conversion is deferred until a
+    // reliable historical price source exists (decided 2026-06-17). Never zero/current-price/guess.
+    /// <summary>Raw gas units used by the tx (text).</summary>
+    public required string GasUsed { get; set; }
+    /// <summary>Raw effective gas price in wei (text); null when the receipt did not report it.</summary>
+    public string? EffectiveGasPriceWei { get; set; }
+    /// <summary>Raw native gas cost in wei = GasUsed × EffectiveGasPrice (text); null when price is unknown.</summary>
+    public string? NativeGasCostWei { get; set; }
+    /// <summary>Gas cost in USD — derived, populated only once a historical price source lands (deferred).</summary>
+    public decimal? GasCostUsd { get; set; }
+
     public DateTimeOffset BlockTimeUtc { get; set; }
 }

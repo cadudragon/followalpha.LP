@@ -1,15 +1,20 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- Collector host (composition root). Becomes a Worker Service in Phase 2 (scheduled snapshots);
-       Phase 0 keeps it a package-free console skeleton. References Application + Infrastructure (DI root). -->
+  <!-- Collector host (composition root): Worker-style BackgroundServices on a cron schedule, plus a minimal
+       /health endpoint (ARCHITECTURE.md §7). References Application + Infrastructure (DI root only). -->
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <UserSecretsId>3ed5edb1-41cb-4fc1-94dd-71a909a0e360</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FollowAlpha.LP.Application\FollowAlpha.LP.Application.csproj" />
     <ProjectReference Include="..\FollowAlpha.LP.Infrastructure\FollowAlpha.LP.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cronos" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
   </ItemGroup>
 
 </Project>

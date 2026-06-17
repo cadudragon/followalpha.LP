@@ -160,6 +160,7 @@ Required environment variables (names are part of the contract; values are never
 | `GRAPH_API_KEY` | Infrastructure (TheGraph adapter) | The Graph decentralized gateway key |
 | `RPC_URL_ARBITRUM` | Infrastructure (event reader) | Arbitrum One RPC endpoint |
 | `RPC_URL_BASE` | Infrastructure (event reader) | Base RPC endpoint |
+| `ALCHEMY_API_KEY` | Infrastructure (event reader) | Optional; when set and the matching `RPC_URL_<CHAIN>` is empty, the per-chain Alchemy URL is derived from it (an explicit `RPC_URL_<CHAIN>` always wins) |
 | `LP_DB_PATH` | Infrastructure (SQLite) | Database file path (default: `./data/followalpha-lp.db`) |
 | `LP_API_KEY` | Api host | Single API key for the auth seam |
 

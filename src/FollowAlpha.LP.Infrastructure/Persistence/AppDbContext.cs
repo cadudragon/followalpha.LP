@@ -20,6 +20,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<WalletPositionOwnership> WalletPositionOwnerships => Set<WalletPositionOwnership>();
+    public DbSet<WalletSyncCursor> WalletSyncCursors => Set<WalletSyncCursor>();
 
     // Facts (append-only, natural-key PK)
     public DbSet<PriceBar> PriceBars => Set<PriceBar>();

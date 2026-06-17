@@ -38,6 +38,27 @@ internal static class NpmLogFactory
             Encode(new ABIValue("address", recipient), new ABIValue("uint256", amount0), new ABIValue("uint256", amount1)),
             txHash, logIndex, blockNumber);
 
+    // keccak("Transfer(address,address,uint256)") — the ERC-721 Transfer topic0.
+    private const string TransferTopic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+    /// <summary>An ERC-721 <c>Transfer</c> log: topics [Transfer, from, to, tokenId]; the reader reads topic3 + (block, logIndex).</summary>
+    public static FilterLog Transfer(BigInteger tokenId, string from, string to, long blockNumber, int logIndex) =>
+        new()
+        {
+            Address = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+            Topics = [TransferTopic, ToTopic(AddressToBigInteger(from)), ToTopic(AddressToBigInteger(to)), ToTopic(tokenId)],
+            Data = "0x",
+            TransactionHash = "0x" + blockNumber.ToString("x", CultureInfo.InvariantCulture),
+            LogIndex = new HexBigInteger(logIndex),
+            BlockNumber = new HexBigInteger(blockNumber),
+        };
+
+    private static BigInteger AddressToBigInteger(string address)
+    {
+        var hex = address.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? address[2..] : address;
+        return BigInteger.Parse("0" + hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+    }
+
     private static byte[] Encode(params ABIValue[] values) => new ABIEncode().GetABIEncoded(values);
 
     private static FilterLog Build(string topic0, BigInteger tokenId, byte[] data, string txHash, int logIndex, long blockNumber) =>
