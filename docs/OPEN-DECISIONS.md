@@ -54,6 +54,17 @@ EF Core maps `decimal` to SQLite `TEXT` for precision. Phase 2.1 does not use de
 in persistence queries. If future use cases need numeric range filtering in SQLite, introduce a
 purpose-specific projection or conversion rather than weakening stored precision.
 
+### Asset View Chart Overlays
+
+**Status:** deferred to Phase 6 (only after the Phase-5 value gate = GO).
+
+`GET /v1/assets/{id}/chart` is staged (decided 2026-06-17, `API-CONTRACT.md`). Phase 3.2 delivers
+`{ candles[], regimeTimeline[], rvVsPoolIv{} }`. The decorative Asset-View overlays — `emaOverlays`
+(Skender), `structuralLevels`, `empiricalRangeBands` (would reuse `BandSurvivalEstimator`), and
+`contextIndicators` — serve the chart UI, which does not exist before Phase 6 and may never exist (NO-GO).
+Building them before the value gate is gold-plating a screen that has not earned its place (AGENTS rule 10).
+Add them with the Asset View screen if Phase 5 is GO.
+
 ## Operational Requirements
 
 ### Always-On Oracle/VPS Deployment (deferred until after Phase 3 full)
@@ -115,6 +126,63 @@ right-censor count; Kaplan-Meier is deferred.
 
 **Review focus:** whether these choices discriminate useful LP setups on real data before any value
 claims are made.
+
+### Regime Classification Thresholds
+
+**Introduced:** Phase 3.2.
+
+Regime (`RANGE`/`TRENDING`/`TRANSITION`) is a **new pure Domain component** — `RegimeClassifier` composing
+the Phase-1 `RealizedVolEstimator` + `TrendinessEstimator`, with a `RegimePolicy` carrying the thresholds
+(RV-percentile bands and a trendiness cutoff), mirroring `RangeVerdictCalculator`/`RangeVerdictPolicy`.
+Thresholds are **declared, not tuned** against historical outcomes (RN-14 discipline) and the classifier
+**never emits direction** (RN-07) — it reports the regime label plus its numeric evidence (RV percentile,
+trendiness, windows).
+
+**Review focus:** whether the percentile bands / trendiness cutoff and the minimum-history requirement for
+a non-`422` answer discriminate useful regimes on real data before any value claim is made.
+
+### Competing-Liquidity Definition
+
+**Introduced:** Phase 3.2 (pool table + pool detail).
+
+`competingLiquidity` is an **object, never a bare number** (a single "competing liquidity" figure would fake
+precision). All liquidity figures are **raw L** (not USD), named with a `Raw` suffix so nobody reads them as
+dollars:
+- `activeLiquidityAtCurrentTickRaw` = `PoolSnapshot.Liquidity` (the snapshot's active L, exactly).
+- `liquidityDensityAroundPriceRaw` = summed **gross** liquidity over `TickLiquiditySnapshot` ticks within the
+  band `[tickLower, tickUpper]`.
+- `bandPct` = frozen policy value (declared, not tuned); `tickLower`/`tickUpper` = the band's initialized tick
+  bounds (`±bandPct` of the current price, snapped to tick spacing); `asOfUtc` = snapshot time.
+
+It is descriptive crowding context, not a recommendation.
+
+**Review focus:** whether the band width and the gross-vs-net choice give a meaningful crowding signal on
+real pools.
+
+### Pool IV Basis
+
+**Introduced:** Phase 3.2.
+
+`poolIv` is an object `{ annualized, basis:"pool_tvl_total", volumeUsd, tvlUsd, asOfUtc }`, not a bare number.
+`annualized` is the Domain formula `2·fee·√(dayVolume/TVL)·√365` with the denominator = the pool's **total**
+TVL (`pool_tvl_total`), with the inputs echoed for reproducibility; an
+approximation that tends to understate IV for concentrated pools (active/in-range TVL would be more correct
+but is not reconstructable from the current snapshot). 3.2 surfaces the number **with its basis** and draws
+no cheap/expensive conclusion — that framing waits until the basis is sound and the value gate is reached.
+
+**Review focus:** whether `pool_tvl_total` is an acceptable v1 basis, or whether an in-range-TVL basis is
+needed before any IV-vs-RV claim.
+
+### Snapshot Staleness Policy
+
+**Introduced:** Phase 3.2.
+
+A snapshot/tick distribution older than the freshness policy (default `2 ×` the collector pool-snapshot
+cadence) is **not a current signal**. Single-resource endpoints (`/regime`, `/pools/{poolId}`) return `422`;
+list endpoints flag the row (`dataStatus`) and null the derived metrics. A stale value is never presented as
+current (RN-08 traceability; do not let old data masquerade as a live read).
+
+**Review focus:** whether `2 ×` cadence is the right staleness bound once real collection cadence is known.
 
 ## Resolved
 
