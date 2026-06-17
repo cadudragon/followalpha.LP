@@ -80,12 +80,15 @@ Edge cases to handle at enrichment (not in the reader):
 
 ### Chain Event Reader Wire-Decode Fixtures
 
-**Status:** representative now; real capture pending.
+**Status:** decode exercised offline against ABI-correct logs; chain-recorded capture still ideal.
 
-The 2.3 offline tests exercise the reader's mapping/ordering/gas-caching against in-memory decoded
-event captures (the `IEvmRpc` seam sits above Nethereum's log decoding). The wire-level log→DTO
-decode (ABI topics/data) is validated against real recorded JSON-RPC captures — pending an RPC key /
-network, the same gold standard as the 2.2 The Graph fixtures.
+The `IEvmRpc` seam returns **raw** `FilterLog`s, so the reader's real Nethereum log→DTO decode runs in
+the offline tests against ABI-correct representative logs (correct keccak topic0, indexed tokenId topic1,
+ABI-encoded data — built by `NpmLogFactory`). This proves the event DTO attributes and the sign/amount/
+recipient mapping. A chain-recorded JSON-RPC capture (real `eth_getLogs`/receipt/block from the gateway)
+remains the ideal final fixture, pending an RPC key / network — same gold standard as the 2.2 The Graph
+fixtures. The production `eth_getLogs` filter wiring (`NethereumEvmRpc`) is validated only by that real
+capture, not by the offline suite.
 
 ## Operational Requirements
 

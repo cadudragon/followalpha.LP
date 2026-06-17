@@ -28,7 +28,7 @@ public sealed record ChainPositionEvent(
     string Amount0Raw,
     string Amount1Raw,
     string GasUsed,
-    string EffectiveGasPriceWei,
-    string NativeGasCostWei,
+    string? EffectiveGasPriceWei,
+    string? NativeGasCostWei,
     string? Recipient,
     string PositionManagerAddress);

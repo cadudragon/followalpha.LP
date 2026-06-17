@@ -1,24 +1,16 @@
 using FollowAlpha.LP.Infrastructure.ChainEvents;
-using Nethereum.ABI.FunctionEncoding.Attributes;
-using Nethereum.Contracts;
-using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
 
 namespace FollowAlpha.LP.Infrastructure.Tests.ChainEvents;
 
 /// <summary>
-/// Offline <see cref="IEvmRpc"/>: returns pre-decoded event logs, gas, and block timestamps from
-/// in-memory captures (no live network, no RPC key). The seam sits above Nethereum's log decoding, so
-/// fixtures need no hand-authored ABI hex; the wire-level decode is validated against real captures
-/// (pending) per OPEN-DECISIONS.md.
+/// Offline <see cref="IEvmRpc"/>: returns ABI-correct raw logs (built by <see cref="NpmLogFactory"/>)
+/// keyed by event topic0, plus recorded gas and block timestamps. The reader's real Nethereum log→DTO
+/// decode runs on these — no live network, no RPC key.
 /// </summary>
 internal sealed class FakeEvmRpc : IEvmRpc
 {
-    public List<EventLog<IncreaseLiquidityEventDto>> Increases { get; } = [];
-
-    public List<EventLog<DecreaseLiquidityEventDto>> Decreases { get; } = [];
-
-    public List<EventLog<CollectEventDto>> Collects { get; } = [];
+    private readonly Dictionary<string, List<FilterLog>> _logsByTopic = new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, GasInfo> GasByTx { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -28,16 +20,25 @@ internal sealed class FakeEvmRpc : IEvmRpc
 
     public List<long> TimestampRequests { get; } = [];
 
-    public Task<IReadOnlyList<EventLog<TEventDto>>> GetEventsAsync<TEventDto>(
-        string chainId, string contractAddress, long fromBlock, long toBlock, CancellationToken cancellationToken)
-        where TEventDto : class, IEventDTO, new()
+    public List<(string Topic, IReadOnlyCollection<string> TokenIds)> LogRequests { get; } = [];
+
+    public void AddLog(string topic0, FilterLog log)
     {
-        IReadOnlyList<EventLog<TEventDto>> result =
-            typeof(TEventDto) == typeof(IncreaseLiquidityEventDto) ? (IReadOnlyList<EventLog<TEventDto>>)(object)Increases :
-            typeof(TEventDto) == typeof(DecreaseLiquidityEventDto) ? (IReadOnlyList<EventLog<TEventDto>>)(object)Decreases :
-            typeof(TEventDto) == typeof(CollectEventDto) ? (IReadOnlyList<EventLog<TEventDto>>)(object)Collects :
-            [];
-        return Task.FromResult(result);
+        if (!_logsByTopic.TryGetValue(topic0, out var logs))
+        {
+            logs = [];
+            _logsByTopic[topic0] = logs;
+        }
+
+        logs.Add(log);
+    }
+
+    public Task<IReadOnlyList<FilterLog>> GetLogsAsync(
+        string chainId, string address, string eventSignatureTopic, IReadOnlyCollection<string> tokenIds, long fromBlock, long toBlock, CancellationToken cancellationToken)
+    {
+        LogRequests.Add((eventSignatureTopic, tokenIds));
+        IReadOnlyList<FilterLog> logs = _logsByTopic.TryGetValue(eventSignatureTopic, out var found) ? found : [];
+        return Task.FromResult(logs);
     }
 
     public Task<GasInfo> GetGasAsync(string chainId, string txHash, CancellationToken cancellationToken)
@@ -51,13 +52,4 @@ internal sealed class FakeEvmRpc : IEvmRpc
         TimestampRequests.Add(blockNumber);
         return Task.FromResult(TimestampByBlock[blockNumber]);
     }
-
-    public static EventLog<TEventDto> Log<TEventDto>(TEventDto dto, string txHash, int logIndex, long blockNumber)
-        where TEventDto : class, IEventDTO, new() =>
-        new(dto, new FilterLog
-        {
-            TransactionHash = txHash,
-            LogIndex = new HexBigInteger(logIndex),
-            BlockNumber = new HexBigInteger(blockNumber),
-        });
 }
