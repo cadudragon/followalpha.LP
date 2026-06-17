@@ -39,7 +39,7 @@ Also read: `OPEN-DECISIONS.md` for accepted deferrals, operational requirements,
 
 ## Phase 3 — Range Advisor & descriptive replay (first value answer)  · precondition `phase-2-done` · tag `phase-3-done`
 Read: `API-CONTRACT.md`, `FSD` UC-02/03/09, `TECH-STACK.md` §1, `NFR.md` §1-2.
-- [ ] **3.1** API host skeleton + `X-Api-Key` auth + OpenAPI + RFC7807 errors (incl. `422` insufficient-data). Gate: health endpoint + auth tested.
+- [x] **3.1** API host skeleton + `X-Api-Key` auth + OpenAPI + RFC7807 errors (incl. `422` insufficient-data). Gate: health endpoint + auth tested.
 - [ ] **3.2** Asset/pool exploration: `/assets`, `/assets/{id}/chart`, `/assets/{id}/regime`, `/assets/{id}/pools`, `/pools/{poolId}`. Gate: use-case tested; regime never emits direction (RN-07); pool table exposes fee tier, volume/TVL, IV, and competing liquidity.
 - [ ] **3.3** `EstimateRangeApr` (`/ranges/estimate-apr`): self-dilution, while-in-range vs time-adjusted, 7d/30d sensitivity. Gate: use-case tested; cross-check vs Metrix documented.
 - [ ] **3.4** `SuggestRangeCandidates` (`/ranges/candidates`): deterministic predeclared band grid ranked by IV-vs-RV, band survival, expected fees, IL, and intent fit. Gate: tested; no optimizer/threshold-tuning; candidate reasons are included.

@@ -18,6 +18,8 @@
     <PackageVersion Include="Cronos" Version="0.8.4" />
     <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
+    <!-- API host (Phase 3.1): OpenAPI document generation (TECH-STACK §1, built-in). -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,6 +27,8 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- API integration tests (Phase 3.1): in-memory host via WebApplicationFactory. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
     <!-- FluentAssertions pinned to 6.x: the last Apache-2.0 line (7.0+ moved to a commercial
          licence). STACK-DECISIONS §3 records FluentAssertions as Apache-2.0, so we stay on 6.x. -->
     <PackageVersion Include="FluentAssertions" Version="6.12.2" />

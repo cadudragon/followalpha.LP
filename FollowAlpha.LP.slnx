@@ -12,6 +12,7 @@
     <Project Path="tests/FollowAlpha.LP.Application.Tests/FollowAlpha.LP.Application.Tests.csproj" />
     <Project Path="tests/FollowAlpha.LP.Infrastructure.Tests/FollowAlpha.LP.Infrastructure.Tests.csproj" />
     <Project Path="tests/FollowAlpha.LP.Architecture.Tests/FollowAlpha.LP.Architecture.Tests.csproj" />
+    <Project Path="tests/FollowAlpha.LP.Api.Tests/FollowAlpha.LP.Api.Tests.csproj" />
   </Folder>
   <Folder Name="/solution/">
     <File Path="Directory.Build.props" />

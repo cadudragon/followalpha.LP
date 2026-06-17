@@ -12,4 +12,13 @@
     <ProjectReference Include="..\FollowAlpha.LP.Infrastructure\FollowAlpha.LP.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <!-- The integration test project (Phase 3.1) drives the host via WebApplicationFactory<Program>. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FollowAlpha.LP.Api.Tests" />
+  </ItemGroup>
+
 </Project>
