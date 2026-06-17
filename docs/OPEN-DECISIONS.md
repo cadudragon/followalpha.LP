@@ -54,56 +54,20 @@ EF Core maps `decimal` to SQLite `TEXT` for precision. Phase 2.1 does not use de
 in persistence queries. If future use cases need numeric range filtering in SQLite, introduce a
 purpose-specific projection or conversion rather than weakening stored precision.
 
-### Phase 2 Completion Tag
-
-**Status:** intentionally later.
-
-`phase-2-done` is created only after item 2.5 passes the agent gate. Item 2.6 is the principal's
-VPS deployment confirmation and is logged separately.
-
-### Chain Event Reader Enrichment
-
-**Status:** deferred to the Collector (2.4) / LP-Audit (4).
-
-Phase 2.3's `IChainEventReader` is a thin raw reader (`ChainPositionEvent`: raw integers as text,
-native gas; no tick/pool/decimals/USD). Building the persistable `PositionEvent` requires enrichment
-done downstream: ownership/tokenId attribution via NPM `Transfer(to=wallet)`; `positions(tokenId)`
-for `tickLower`/`tickUpper` (with the event's block tag when historical state matters);
-`factory.getPool` (cross-checkable by CREATE2) for `PoolId`; token decimals for human
-`Amount0`/`Amount1`; gas→USD via a price source; and writing the `PositionEvent` fact.
-
-Edge cases to handle at enrichment (not in the reader):
-- a `tokenId` transferred between wallets mid-life (attribution must be owner/time aware);
-- `Collect.recipient` ≠ the position owner;
-- positions opened before the queried `fromBlock`;
-- `positions(tokenId)` current state may not equal the state at a historical block.
-
-### Chain Event Reader Wire-Decode Fixtures
-
-**Status:** decode exercised offline against ABI-correct logs; chain-recorded capture still ideal.
-
-The `IEvmRpc` seam returns **raw** `FilterLog`s, so the reader's real Nethereum log→DTO decode runs in
-the offline tests against ABI-correct representative logs (correct keccak topic0, indexed tokenId topic1,
-ABI-encoded data — built by `NpmLogFactory`). This proves the event DTO attributes and the sign/amount/
-recipient mapping. A chain-recorded JSON-RPC capture (real `eth_getLogs`/receipt/block from the gateway)
-remains the ideal final fixture, pending an RPC key / network — same gold standard as the 2.2 The Graph
-fixtures. The production `eth_getLogs` filter wiring (`NethereumEvmRpc`) is validated only by that real
-capture, not by the offline suite.
-
 ## Operational Requirements
 
-### SQLite Foreign Keys in Runtime
+### Always-On Oracle/VPS Deployment (deferred until after Phase 3 full)
 
-**Status:** must be handled in Phase 2.4 composition root.
+**Status:** deploy-ready now; standing it up is deferred — `CHECKLIST.md` 2.6.
 
-Phase 2.1 enforces DATA-MODEL relationships with foreign keys and tests them against SQLite. The
-runtime connection string must explicitly enable SQLite foreign keys:
-
-```text
-Foreign Keys=True
-```
-
-This belongs in the Collector/API composition root or configuration binding that wires `LP_DB_PATH`.
+Decided 2026-06-17: the Collector is *designed* always-on (tick-liquidity distributions cannot be
+reconstructed retroactively), but the 24/7 Oracle/VPS deployment is **deferred until after Phase 3 full has
+proven sufficient value/edge** — no paid 24/7 infrastructure before the engine earns it. `phase-2-done`
+means the **agent gate is green and the host is deploy-ready** (Dockerfile + `docs/DEPLOYMENT.md`, image
+builds and boots); it does **not** require a real cloud deploy, and the cloud deploy does **not** block the
+start of Phase 3. Until the always-on deploy happens, **local/intermittent runs are acceptable** for smoke
+and initial collection, with the **known, accepted loss of tick-liquidity during downtime — never
+synthetically backfilled.**
 
 ### CI Evidence
 
@@ -172,3 +136,41 @@ This is recorded in `docs/ARCHITECTURE.md` §5.
 
 The EF model now enforces the DATA-MODEL relationships with foreign keys, while keeping
 `AlertRule.TargetRef` polymorphic by design.
+
+### Chain Event Reader Enrichment
+
+**Resolved in:** Phase 2.4 (`collector: add phase 2.4 scheduled ingestion host`).
+
+`SyncWalletPositionEvents` enriches the raw `ChainPositionEvent` into the persistable `PositionEvent`:
+`positions(tokenId)` for ticks + token pair, `factory.getPool` for `PoolId`, ERC-20 `decimals` for human
+amounts. The transferred-between-wallets edge case is handled by **owner-at-time attribution** —
+`WalletPositionOwnership` intervals built from `Transfer` in/out at `(block, logIndex)` granularity; an event
+is written only when it falls inside an open interval (ambiguous cases skipped + logged, never guessed).
+`Collect.recipient ≠ owner` and positions opened before `fromBlock` are covered by the same windowing. Gas→USD
+stays deferred (`GasCostUsd` nullable) until a reliable historical price source lands — never zero/guess.
+
+### Chain Event Reader Wire-Decode Fixtures
+
+**Resolved in:** Phase 2.3/2.4 (`RecordedRpcReplayTests`).
+
+A **real chain-recorded JSON-RPC capture** of an Arbitrum position
+(`tests/.../Recorded/Fixtures/arbitrum_position_5531934.json`) is replayed at the Nethereum transport level
+through the production `NethereumEvmRpc`, so the real `eth_getLogs`/`positions`/`getPool`/`decimals`/receipt
+wiring is validated offline (no key/network). An env-gated smoke test re-records it against the live public
+RPC.
+
+### SQLite Foreign Keys in Runtime
+
+**Resolved in:** Phase 2.4.
+
+The Collector composition root wires the connection string with `Foreign Keys=True`
+(`src/FollowAlpha.LP.Collector/Program.cs`), enforcing the DATA-MODEL foreign keys at runtime.
+
+### Phase 2 Completion Tag
+
+**Resolved in:** Phase 2.5 (decision 2026-06-17).
+
+`phase-2-done` = agent gate green + deploy-ready (Dockerfile + runbook, image builds/boots). It does **not**
+depend on a real cloud deploy; the always-on Oracle/VPS deploy is the deferred operational follow-up above
+(`CHECKLIST.md` 2.6). The squashed `InitialCreate` migration was a pre-first-deploy/tag clean-up; **from
+`phase-2-done` onward, migrations are immutable** (schema changes are new incremental migrations).

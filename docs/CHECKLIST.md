@@ -33,9 +33,9 @@ Also read: `OPEN-DECISIONS.md` for accepted deferrals, operational requirements,
 - [x] **2.1** EF Core + SQLite stores realizing `DATA-MODEL.md`; migrations; append-only repositories (insert+query only) for facts/decision/intent. Gate: append-only enforced and tested; idempotent insert-if-absent on natural keys.
 - [x] **2.2** The Graph gateway adapter (`IPoolDataSource`): pool state, day volume, tick liquidity distribution; Uni v3 on Arbitrum + Base descriptors. Gate: integration test vs recorded fixtures; subgraph IDs recorded in PR.
 - [x] **2.3** Nethereum event reader (`IChainEventReader`): mint/burn/collect + gas for configured wallets. Gate: integration test vs recorded fixtures.
-- [ ] **2.4** Collector host (Worker + Cronos): scheduled pool/tick snapshots, price refresh, wallet sync; `/health` freshness. Gate: jobs idempotent (test); runs locally with env vars; no secret in repo.
-- [ ] **2.5** Deployment artifact (Dockerfile/compose or systemd) + `docs/DEPLOYMENT.md` runbook. Gate (agent): runbook complete. Tag `phase-2-done`.
-- [ ] **2.6** *(principal, human)* Deploy to VPS via runbook; confirm snapshots accumulating on both chains. Tick when confirmed.
+- [x] **2.4** Collector host (Worker + Cronos): scheduled pool/tick snapshots, price refresh, wallet sync (owner-at-time attribution + incremental cursor/chunking); `/health` freshness. Gate: jobs idempotent (test); runs locally with env vars; no secret in repo.
+- [x] **2.5** Deployment artifact (Dockerfile) + `docs/DEPLOYMENT.md` runbook. Gate (agent): runbook complete; image builds and boots locally. Tag `phase-2-done`. **`phase-2-done` = agent gate green + deploy-ready (Docker/runbook); it does NOT depend on a real cloud deploy.**
+- [ ] **2.6** *(principal, human — operational follow-up, does NOT block Phase 3)* Always-on Oracle/VPS deploy via runbook; confirm snapshots accumulating on both chains. **Decided 2026-06-17: deferred until after Phase 3 full proves value/edge.** Until then, local/intermittent runs are acceptable for smoke and initial collection — with the known, accepted loss of tick-liquidity during downtime (never synthetically backfilled). Tick when the always-on deploy is actually done.
 
 ## Phase 3 — Range Advisor & descriptive replay (first value answer)  · precondition `phase-2-done` · tag `phase-3-done`
 Read: `API-CONTRACT.md`, `FSD` UC-02/03/09, `TECH-STACK.md` §1, `NFR.md` §1-2.

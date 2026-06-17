@@ -1,17 +1,23 @@
 # DEPLOYMENT.md — FollowAlpha.LP Collector (VPS runbook)
 
 The Collector is the only deployable in Phase 2 (`IMPLEMENTATION-PLAN.md §2`). It is an always-on host
-(`ARCHITECTURE.md §7`) that runs scheduled jobs and exposes a `/health` endpoint. It is **always-on by
-necessity**: the per-tick liquidity distribution it snapshots cannot be reconstructed retroactively. A
-missed run is recoverable for events and prices, **never** for tick distributions — so the box should stay
-up and the database must live on durable storage.
+(`ARCHITECTURE.md §7`) that runs scheduled jobs and exposes a `/health` endpoint. It is **designed
+always-on**: the per-tick liquidity distribution it snapshots cannot be reconstructed retroactively. A
+missed run is recoverable for events and prices, **never** for tick distributions — so once it is running
+24/7 the box should stay up and the database must live on durable storage.
 
 > **Read-only on-chain.** The Collector only reads The Graph and public JSON-RPC. There is no signing code
 > and no private key anywhere in this system. Never add one.
 
-This runbook is the artifact for the **principal-deploy step** of the Phase 2 gate (`IMPLEMENTATION-PLAN.md
-§2`). Agents never receive VPS credentials; the principal (Carlos) performs the deploy and logs that the
-snapshots are accumulating on both chains.
+> **Deployment timing (decided 2026-06-17).** `phase-2-done` only requires this to be **deploy-ready**
+> (image builds + boots, runbook complete). The **always-on Oracle/VPS deployment is intentionally deferred
+> until after Phase 3 full has proven sufficient value/edge** — we do not pay for 24/7 infrastructure before
+> the engine earns it. Until then, **running the Collector locally or intermittently is acceptable** for
+> smoke and initial collection. Accept that **tick-liquidity gaps during any downtime are permanent and are
+> never synthetically backfilled** (`pool-snapshot`/`wallet-sync`/`price-refresh` close their own gaps on the
+> next run via idempotent re-ingestion and the wallet-sync cursor; the tick distribution does not). When the
+> always-on deploy is actually performed (`CHECKLIST.md` 2.6), the steps below are the runbook for it. Agents
+> never receive VPS credentials.
 
 ---
 
@@ -19,7 +25,7 @@ snapshots are accumulating on both chains.
 
 | Component | Project | Role |
 |---|---|---|
-| Collector host | `src/FollowAlpha.LP.Collector` | `pool-snapshot` + `wallet-sync` cron jobs, seeding, `/health` |
+| Collector host | `src/FollowAlpha.LP.Collector` | `pool-snapshot` + `wallet-sync` + `price-refresh` cron jobs, seeding, `/health` |
 
 Three scheduled jobs (defaults in `appsettings.json`, overridable via the `Collector` config section or env):
 
@@ -181,7 +187,7 @@ volume.
 
 ---
 
-## 6. Verify the deploy (Phase 2 principal gate)
+## 6. Verify a run (local smoke, or the deferred always-on deploy)
 
 1. **Health** — `curl -s localhost:8080/health | jq`. Expect `status: "Healthy"` once the first snapshot
    lands. A pool with no snapshot, or one older than `2 × PoolSnapshotFreshnessSeconds`, makes the endpoint
@@ -191,8 +197,9 @@ volume.
    startup "Seeded reference graph" line, then per-pool snapshot lines (`snapshot inserted, N tick rows`)
    and per-wallet sync lines (`N tokenIds, R events read, I inserted`).
 3. **Data accumulating on both chains** — confirm pool snapshots and tick rows are growing for each
-   watchlist chain, and wallet events for each configured wallet/chain. This is the evidence the Phase 2
-   gate asks the principal to log.
+   watchlist chain, and wallet events for each configured wallet/chain. This is the evidence to log when the
+   always-on deploy (`CHECKLIST.md` 2.6) is eventually performed; for local smoke it simply confirms the
+   pipeline works end-to-end with real keys.
 
 Quick DB sanity check:
 
