@@ -1,0 +1,32 @@
+# Build context is the repo root (see src/FollowAlpha.LP.Collector/Dockerfile). Keep it small and never
+# leak local data or secrets into an image layer.
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+artifacts/
+
+# Frontend (not part of the Collector image)
+frontend/
+
+# Python oracle tooling
+tools/oracle/.venv/
+**/__pycache__/
+**/*.pyc
+
+# Local data & secrets — must never enter an image
+**/*.db
+**/*.db-shm
+**/*.db-wal
+.env
+.env.*
+!.env.example
+**/appsettings.*.local.json
+data/
+
+# VCS / docs / tests are not needed to build or run the Collector
+.git/
+.github/
+tests/
+docs/
+*.md
