@@ -1,13 +1,16 @@
 // FollowAlpha.LP.Api — ASP.NET Core minimal API host (composition root).
 //
-// Phase 3.1 is API *foundation*, not product: auth, error contract, OpenAPI, health. The Range Advisor
-// surface (assets/pools/ranges/decisions) lands in 3.2-3.6. The two endpoints under the secured group are
-// minimal foundation probes (auth + the 422 insufficient-data path) and are replaced by real use-case
-// endpoints in 3.2+.
+// Phase 3.2 adds the first real product surface: asset/pool exploration (UC-02), read-only over the data the
+// Collector persists. The Range Advisor (ranges/verdict/backtest/decision-log) lands in 3.3-3.6. The API is
+// a reader: it never migrates or writes the database (the Collector owns that).
 using FollowAlpha.LP.Api.Errors;
 using FollowAlpha.LP.Api.Security;
-using FollowAlpha.LP.Application.Errors;
-using Microsoft.AspNetCore.OpenApi;
+using FollowAlpha.LP.Application.Abstractions;
+using FollowAlpha.LP.Application.Exploration;
+using FollowAlpha.LP.Application.Persistence;
+using FollowAlpha.LP.Infrastructure.Persistence;
+using FollowAlpha.LP.Infrastructure.Time;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,66 +19,66 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<InsufficientDataExceptionHandler>();
 
 // OpenAPI document (TECH-STACK §1). Served at /openapi/v1.json; the generated spec is the living contract.
-// The temporary /v1/_diagnostics/* probes are flagged deprecated via an operation transformer (WithOpenApi
-// is removed in .NET 10), so they read as non-product even if someone finds them in the spec.
-builder.Services.AddOpenApi("v1", options =>
-    options.AddOperationTransformer((operation, context, _) =>
-    {
-        if (context.Description.RelativePath?.StartsWith("v1/_diagnostics", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            operation.Deprecated = true;
-        }
+builder.Services.AddOpenApi("v1");
 
-        return Task.CompletedTask;
-    }));
+// Persistence — read-only over the Collector's SQLite DB (env/appsettings; the API never migrates it).
+var dbPath = builder.Configuration["LP_DB_PATH"] ?? "./data/followalpha-lp.db";
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath};Foreign Keys=True"));
+builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddSingleton(ExplorationPolicy.Default);
+builder.Services.AddScoped<ISnapshotStore, EfSnapshotStore>();
+builder.Services.AddScoped<IPriceStore, EfPriceStore>();
+builder.Services.AddScoped<IExplorationReadStore, EfExplorationReadStore>();
+
+// Exploration use cases (UC-02).
+builder.Services.AddScoped<ListWatchlistAssets>();
+builder.Services.AddScoped<GetAssetChart>();
+builder.Services.AddScoped<ClassifyAssetRegime>();
+builder.Services.AddScoped<ListAssetPools>();
+builder.Services.AddScoped<GetPoolDetail>();
 
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.MapOpenApi();
 
-// Liveness/readiness for ops — intentionally unauthenticated and a real endpoint (never deprecated). The
-// full collector-freshness /v1/health (API-CONTRACT §3) is wired when the snapshot store is consumed in a
-// later phase; this is the skeleton.
+// Liveness/readiness for ops — intentionally unauthenticated and a real endpoint. The full
+// collector-freshness /v1/health (API-CONTRACT §3) is wired in a later phase; this is the skeleton.
 app.MapGet("/v1/health", () => Results.Ok(new { status = "ok", timeUtc = DateTimeOffset.UtcNow }))
     .WithName("Health");
 
-// Everything else under /v1 requires the X-Api-Key (API-CONTRACT §1; NFR S3). Real product endpoints land in 3.2+.
-var secured = app.MapGroup("/v1").AddEndpointFilter<ApiKeyEndpointFilter>();
+// Everything under /v1 requires the X-Api-Key (API-CONTRACT §1; NFR S3).
+var v1 = app.MapGroup("/v1").AddEndpointFilter<ApiKeyEndpointFilter>();
 
-// Temporary Phase-3.1 plumbing probes — NOT product endpoints. They only exist to prove the auth seam and
-// the RFC7807/422 path while no real use-case endpoints exist yet. Exposed in Development/Testing only (so
-// they never become accidental public API in Production) and flagged deprecated in the OpenAPI document.
-// They are removed when the real /v1 endpoints arrive in 3.2+.
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
-{
-    MapDiagnosticProbes(secured);
-}
+// Asset/pool exploration (UC-02). 404 (problem+json) for unknown asset/pool; 422 for thin/stale data.
+v1.MapGet("/assets", async (ListWatchlistAssets useCase, CancellationToken ct) =>
+        Results.Ok(await useCase.RunAsync(ct)))
+    .WithName("ListAssets");
+
+v1.MapGet("/assets/{id}/chart", async (string id, GetAssetChart useCase, CancellationToken ct) =>
+        await useCase.RunAsync(id, ct) is { } result ? Results.Ok(result) : NotFound("asset", id))
+    .WithName("AssetChart");
+
+v1.MapGet("/assets/{id}/regime", async (string id, ClassifyAssetRegime useCase, CancellationToken ct) =>
+        await useCase.RunAsync(id, ct) is { } result ? Results.Ok(result) : NotFound("asset", id))
+    .WithName("AssetRegime");
+
+v1.MapGet("/assets/{id}/pools", async (string id, ListAssetPools useCase, CancellationToken ct) =>
+        await useCase.RunAsync(id, ct) is { } result ? Results.Ok(result) : NotFound("asset", id))
+    .WithName("AssetPools");
+
+v1.MapGet("/pools/{poolId}", async (string poolId, GetPoolDetail useCase, CancellationToken ct) =>
+        await useCase.RunAsync(poolId, ct) is { } result ? Results.Ok(result) : NotFound("pool", poolId))
+    .WithName("PoolDetail");
 
 app.Run();
 
-static void MapDiagnosticProbes(RouteGroupBuilder secured)
-{
-    var diagnostics = secured.MapGroup("/_diagnostics");
-
-    // Auth accept-path probe: 200 only with a valid X-Api-Key.
-    diagnostics.MapGet("/ping", () => Results.Ok(new { pong = true }))
-        .WithName("DiagnosticsPing")
-        .WithSummary("[temporary 3.1 probe] auth plumbing — not a product endpoint")
-        .WithDescription("Phase-3.1 scaffolding to prove the X-Api-Key seam (200 only with a valid key). "
-            + "Not part of the product API; removed when real /v1 endpoints land in 3.2+.");
-
-    // 422 insufficient-data path probe (RN-02; API-CONTRACT §2). Real use cases throw this from their own
-    // logic in 3.2+; this stands in until they exist.
-    diagnostics.MapGet("/insufficient-data", IResult () =>
-            throw new InsufficientDataException(
-                "Not enough collected data to produce a result (temporary 3.1 probe).",
-                ["priceBars", "poolSnapshot"]))
-        .WithName("DiagnosticsInsufficientData")
-        .WithSummary("[temporary 3.1 probe] RFC7807/422 plumbing — not a product endpoint")
-        .WithDescription("Phase-3.1 scaffolding to prove the insufficient-data path returns RFC7807 422. "
-            + "Not part of the product API; removed when real /v1 endpoints land in 3.2+.");
-}
+// Unknown asset/pool -> 404 as RFC 7807 problem+json (API-CONTRACT §2).
+static IResult NotFound(string kind, string id) => Results.Problem(
+    statusCode: StatusCodes.Status404NotFound,
+    title: "Not found",
+    detail: $"No {kind} with id '{id}'.",
+    type: "https://httpstatuses.io/404");
 
 // Exposed so the integration tests can host the app in-memory via WebApplicationFactory<Program>.
 public partial class Program;
