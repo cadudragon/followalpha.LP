@@ -18,7 +18,7 @@ Authored 2026-06-14. Measurable targets the system must meet. Calibrated to **si
 
 ## 3. Availability & data freshness
 
-- **A1**: the Collector targets **24/7** on the VPS. Tick-liquidity snapshots are the only data that cannot be reconstructed retroactively — a missed tick snapshot is permanent loss; missed price/event syncs are recoverable by backfill.
+- **A1**: the DataSync targets **24/7** on the VPS. Tick-liquidity snapshots are the only data that cannot be reconstructed retroactively — a missed tick snapshot is permanent loss; missed price/event syncs are recoverable by backfill.
 - **A2**: snapshot cadence per watchlist pool is configurable; default target freshness **≤ 1 h** for pool/tick snapshots, **≤ 15 min** for price bars (verify against source rate limits).
 - **A3**: `GET /health` exposes per-pool last-snapshot age; staleness beyond 2× cadence is flagged.
 - **A4**: the API and frontend are single-instance local; no HA requirement in v1.
@@ -41,7 +41,7 @@ Authored 2026-06-14. Measurable targets the system must meet. Calibrated to **si
 ## 6. Observability & operability
 
 - **O1**: structured logging (Serilog) across hosts; Domain never logs.
-- **O2**: Collector emits per-job outcome (rows ingested, duration, source) and freshness metrics surfaced by `/health`.
+- **O2**: DataSync emits per-job outcome (rows ingested, duration, source) and freshness metrics surfaced by `/health`.
 - **O3**: a Phase-2 deliverable `docs/DEPLOYMENT.md` runbook covers provision, env vars, health check, log access, update procedure.
 
 ## 7. Maintainability & quality

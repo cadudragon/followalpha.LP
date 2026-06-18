@@ -15,14 +15,14 @@ Dependency direction (enforced by `NetArchTest`):
 ```
 Domain  ◄──  Application  ◄──  Infrastructure
   ▲              ▲                  ▲
-  └── Api / Collector / Cli (hosts: DI + transport only) ──┘
+  └── Api / DataSync / Cli (hosts: DI + transport only) ──┘
               frontend/  ──► talks only to Api (OpenAPI client)
 ```
 
 - **Domain**: pure, deterministic, immutable, BCL-only. Liquidity math (Elsts port), intent accounting, verdict math, vol/trendiness/survival estimators. No I/O, no `DateTime.Now`, no logging.
 - **Application**: use cases + ports (interfaces). Context indicators (Skender) live here.
 - **Infrastructure**: adapters implementing the ports (The Graph, RPC, SQLite, notifications).
-- **Hosts**: `Api`, `Collector` (24/7 VPS), `Cli` — composition root only.
+- **Hosts**: `Api`, `DataSync` (24/7 VPS), `Cli` — composition root only.
 
 ## 2. Solution layout (decided)
 
@@ -33,7 +33,7 @@ src/
   FollowAlpha.LP.Application/       # use cases + ports — refs Domain
   FollowAlpha.LP.Infrastructure/    # adapters — refs Application, Domain
   FollowAlpha.LP.Api/               # ASP.NET Core minimal API
-  FollowAlpha.LP.Collector/         # Worker Service (scheduled snapshots)
+  FollowAlpha.LP.DataSync/         # Worker Service (scheduled snapshots)
   FollowAlpha.LP.Cli/               # thin CLI (phases 1-3 + ops)
 frontend/                           # Next.js app (separate; OpenAPI client)
 tests/
@@ -54,7 +54,7 @@ docs/  config/
 | Microsoft.EntityFrameworkCore.Sqlite | Infrastructure | persistence (Postgres seam later) | MIT |
 | Nethereum | Infrastructure | EVM: event logs (mint/burn/collect), Chainlink reads | MIT |
 | **Skender.Stock.Indicators** | Application | context indicators (EMA/SMA/ATR/ADX/RSI/BB) — **never in Domain** | Apache-2.0 |
-| Cronos | Collector | cron expression parsing for scheduled jobs | MIT |
+| Cronos | DataSync | cron expression parsing for scheduled jobs | MIT |
 | Microsoft.Extensions.Http.Resilience (Polly) | Infrastructure | retries/backoff on all data sources | MIT/BSD-3 |
 | Serilog (+ Console/File sinks) | hosts | structured logging (never in Domain) | Apache-2.0 |
 | System.Text.Json | all | serialization (BCL) | MIT |
@@ -117,5 +117,5 @@ v1 ships a **thin, custom, LP-native deterministic replay layer**, not a generic
 
 - Notification channel mechanism for alerts (Telegram bot / e-mail / push) — chosen with principal at Phase 6.
 - Exact subgraph IDs for Uni v3 on Arbitrum/Base — resolved at Phase 2, recorded in the PR.
-- The list of RN-13 context indicators on the Asset View — analyst's recommended starting roster is in `TECH-STACK.md` ("Indicator roster for the Asset View"); final list locked against real collected data once the Collector runs. (Decision math that feeds the verdict is already fixed in Domain — that part is NOT open.)
+- The list of RN-13 context indicators on the Asset View — analyst's recommended starting roster is in `TECH-STACK.md` ("Indicator roster for the Asset View"); final list locked against real collected data once the DataSync runs. (Decision math that feeds the verdict is already fixed in Domain — that part is NOT open.)
 - Postgres + real identity/multi-tenant — SaaS gate, principal's decision.

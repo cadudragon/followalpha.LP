@@ -19,7 +19,7 @@ public class DependencyDirectionTests
                 ArchitectureContract.Application,
                 ArchitectureContract.Infrastructure,
                 ArchitectureContract.Api,
-                ArchitectureContract.Collector,
+                ArchitectureContract.DataSync,
                 ArchitectureContract.Cli)
             .GetResult();
 
@@ -34,7 +34,7 @@ public class DependencyDirectionTests
             .NotHaveDependencyOnAny(
                 ArchitectureContract.Infrastructure,
                 ArchitectureContract.Api,
-                ArchitectureContract.Collector,
+                ArchitectureContract.DataSync,
                 ArchitectureContract.Cli)
             .GetResult();
 
@@ -48,7 +48,7 @@ public class DependencyDirectionTests
             .Should()
             .NotHaveDependencyOnAny(
                 ArchitectureContract.Api,
-                ArchitectureContract.Collector,
+                ArchitectureContract.DataSync,
                 ArchitectureContract.Cli)
             .GetResult();
 

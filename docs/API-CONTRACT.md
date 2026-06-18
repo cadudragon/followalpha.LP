@@ -79,7 +79,7 @@ reports numbers with their basis, not conclusions.
   }
 }]
 ```
-When `dataStatus ≠ OK` the derived metrics (`volTvlRatio`, `poolIv.value`, `competingLiquidity.*`) are null — a stale snapshot is never shown as a current signal. The list itself does not `422` (the pools exist).
+When `dataStatus ≠ OK` the derived metrics (`volTvlRatio`, `poolIv.annualized`, `competingLiquidity.*`) are null — a stale snapshot is never shown as a current signal. The list itself does not `422` (the pools exist).
 
 `GET /v1/pools/{poolId}` → pool detail:
 ```
@@ -100,7 +100,7 @@ is an approximation that tends to understate IV for concentrated pools. The inpu
 are echoed so the figure is reproducible. 3.2 returns the number with its basis and draws no cheap/expensive
 conclusion.
 
-**Staleness.** A snapshot/tick distribution older than the freshness policy (default `2 ×` the collector's
+**Staleness.** A snapshot/tick distribution older than the freshness policy (default `2 ×` the DataSync worker's
 pool-snapshot cadence) is treated as **not a current signal**: single-resource endpoints (`/regime`,
 `/pools/{poolId}`) return `422` with a detail naming the age; list endpoints (`/assets`,
 `/assets/{id}/pools`) keep the row but set `dataStatus` (`STALE`/`NO_SNAPSHOT`/`INSUFFICIENT`) and null the
@@ -139,7 +139,7 @@ derived metrics.
 ### Alerts (UC-07) & config
 
 `GET/POST/DELETE /v1/alert-rules` → CRUD of alert rules.
-`GET /v1/health` → collector freshness per pool, last sync, gaps, data-source status (also used by ops).
+`GET /v1/health` → DataSync freshness per pool, last sync, gaps, data-source status (also used by ops).
 
 ## 4. Out of scope (explicitly no endpoint)
 

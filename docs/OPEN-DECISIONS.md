@@ -43,7 +43,7 @@ in the alert-rule Application use case when alert CRUD is implemented.
 **Status:** accepted for Phase 2.
 
 Fact ingestion uses provider-agnostic query-first insert-if-absent with unique natural keys as the
-database defence. This assumes the Collector is a single writer. If multi-writer ingestion is added,
+database defence. This assumes the DataSync worker is a single writer. If multi-writer ingestion is added,
 replace or wrap this with provider-specific conflict handling behind the same ports.
 
 ### SQLite Decimal Storage
@@ -67,11 +67,24 @@ Add them with the Asset View screen if Phase 5 is GO.
 
 ## Operational Requirements
 
+### DataSync Semantics / Collector Naming Cleanup
+
+**Status:** resolved in 3.2b — project renamed `FollowAlpha.LP.Collector` → `FollowAlpha.LP.DataSync`; docs reframed.
+
+Decided 2026-06-18: the old `Collector` name and some always-on language overstated the worker's role.
+FollowAlpha.LP is **not** building a price oracle and the local database is not the source of truth for
+market prices. The worker's contract should be framed as **DataSync/backfill/cache/materialization**:
+price data comes from external market-data providers/oracles and is persisted as cache/provenance for
+reproducible reads; wallet events are RPC backfilled/synced; pool/tick data is provider/RPC/indexer-backed
+sync/cache with source and freshness. If still cheap, rename `FollowAlpha.LP.Collector` to
+`FollowAlpha.LP.DataSync`; otherwise at minimum update the docs and public language. This cleanup must not
+change trading/range logic, introduce a new data provider, or synthetically fill tick-liquidity gaps.
+
 ### Always-On Oracle/VPS Deployment (deferred until after Phase 3 full)
 
 **Status:** deploy-ready now; standing it up is deferred — `CHECKLIST.md` 2.6.
 
-Decided 2026-06-17: the Collector is *designed* always-on (tick-liquidity distributions cannot be
+Decided 2026-06-17: the DataSync worker is *designed* always-on (tick-liquidity distributions cannot be
 reconstructed retroactively), but the 24/7 Oracle/VPS deployment is **deferred until after Phase 3 full has
 proven sufficient value/edge** — no paid 24/7 infrastructure before the engine earns it. `phase-2-done`
 means the **agent gate is green and the host is deploy-ready** (Dockerfile + `docs/DEPLOYMENT.md`, image
@@ -177,7 +190,7 @@ needed before any IV-vs-RV claim.
 
 **Introduced:** Phase 3.2.
 
-A snapshot/tick distribution older than the freshness policy (default `2 ×` the collector pool-snapshot
+A snapshot/tick distribution older than the freshness policy (default `2 ×` the DataSync pool-snapshot
 cadence) is **not a current signal**. Single-resource endpoints (`/regime`, `/pools/{poolId}`) return `422`;
 list endpoints flag the row (`dataStatus`) and null the derived metrics. A stale value is never presented as
 current (RN-08 traceability; do not let old data masquerade as a live read).
@@ -231,8 +244,8 @@ RPC.
 
 **Resolved in:** Phase 2.4.
 
-The Collector composition root wires the connection string with `Foreign Keys=True`
-(`src/FollowAlpha.LP.Collector/Program.cs`), enforcing the DATA-MODEL foreign keys at runtime.
+The DataSync composition root wires the connection string with `Foreign Keys=True`
+(`src/FollowAlpha.LP.DataSync/Program.cs`), enforcing the DATA-MODEL foreign keys at runtime.
 
 ### Phase 2 Completion Tag
 

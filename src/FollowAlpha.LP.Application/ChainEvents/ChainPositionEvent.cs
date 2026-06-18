@@ -14,7 +14,7 @@ public static class PositionEventTypes
 /// raw integers are text (no token-decimal scaling), gas is native wei (no USD), and tick/pool ownership
 /// are NOT resolved here. Enrichment (ownership via <c>Transfer</c>, <c>positions(tokenId)</c> for ticks,
 /// <c>factory.getPool</c>, token decimals, gas→USD, building the persistable <c>PositionEvent</c>) is the
-/// Collector/Application's job — see OPEN-DECISIONS.md.
+/// DataSync worker/Application's job — see OPEN-DECISIONS.md.
 /// </summary>
 public sealed record ChainPositionEvent(
     string ChainId,

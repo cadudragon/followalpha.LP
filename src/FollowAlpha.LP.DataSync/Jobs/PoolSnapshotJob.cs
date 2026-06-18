@@ -2,7 +2,7 @@ using FollowAlpha.LP.Application.Abstractions;
 using FollowAlpha.LP.Application.Collection;
 using Microsoft.Extensions.Options;
 
-namespace FollowAlpha.LP.Collector.Jobs;
+namespace FollowAlpha.LP.DataSync.Jobs;
 
 /// <summary>
 /// Scheduled pool/tick snapshot job: runs <see cref="IngestPoolSnapshots"/> over the configured watchlist.
@@ -11,14 +11,14 @@ namespace FollowAlpha.LP.Collector.Jobs;
 public sealed class PoolSnapshotJob : CronBackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptions<CollectorOptions> _options;
-    private readonly CollectorHealth _health;
+    private readonly IOptions<DataSyncOptions> _options;
+    private readonly DataSyncHealth _health;
 
     public PoolSnapshotJob(
         IServiceScopeFactory scopeFactory,
-        IOptions<CollectorOptions> options,
+        IOptions<DataSyncOptions> options,
         IClock clock,
-        CollectorHealth health,
+        DataSyncHealth health,
         ILogger<PoolSnapshotJob> logger)
         : base(options.Value.PoolSnapshotCron, options.Value.RunJobsOnStartup, clock, logger)
     {

@@ -6,7 +6,7 @@ using FollowAlpha.LP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace FollowAlpha.LP.Collector.Jobs;
+namespace FollowAlpha.LP.DataSync.Jobs;
 
 /// <summary>
 /// Scheduled wallet event-sync job: for each seeded audit wallet and each chain it is tracked on, discovers
@@ -17,14 +17,14 @@ namespace FollowAlpha.LP.Collector.Jobs;
 public sealed class WalletSyncJob : CronBackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptions<CollectorOptions> _options;
-    private readonly CollectorHealth _health;
+    private readonly IOptions<DataSyncOptions> _options;
+    private readonly DataSyncHealth _health;
 
     public WalletSyncJob(
         IServiceScopeFactory scopeFactory,
-        IOptions<CollectorOptions> options,
+        IOptions<DataSyncOptions> options,
         IClock clock,
-        CollectorHealth health,
+        DataSyncHealth health,
         ILogger<WalletSyncJob> logger)
         : base(options.Value.WalletSyncCron, options.Value.RunJobsOnStartup, clock, logger)
     {

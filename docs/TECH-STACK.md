@@ -18,7 +18,7 @@ Authored 2026-06-12. Binding for implementation, same change rules as `ARCHITECT
 | ORM / persistence | EF Core + SQLite | MIT / public domain | migrations in repo; Postgres seam per ARCHITECTURE |
 | EVM client | Nethereum | MIT | event logs (mint/burn/collect), Chainlink feed reads |
 | Context indicators | **Skender.Stock.Indicators** | Apache-2.0 | the reference .NET TA library (EMA, SMA, ATR, ADX, RSI, BB, +100); lives in `Application`, never in `Domain` |
-| Scheduling | .NET `BackgroundService` + **Cronos** (cron parsing) | MIT | no Quartz; keep the Collector boring |
+| Scheduling | .NET `BackgroundService` + **Cronos** (cron parsing) | MIT | no Quartz; keep the DataSync boring |
 | HTTP resilience | Polly (via `Microsoft.Extensions.Http.Resilience`) | BSD-3 | retries/backoff for all data sources |
 | GraphQL queries | plain `HttpClient` + raw query strings | — | The Graph queries are static; a GraphQL client lib is dead weight |
 | Logging | Serilog | Apache-2.0 | structured, file + console sinks |
@@ -55,7 +55,7 @@ Explicitly rejected: TradingView **Advanced Charts / widget** (free but closed-s
 
 ### Indicator roster for the Asset View (analyst recommendation — TO CONFIRM against real data)
 
-Two buckets. The **decision math is already fixed** (lives in `Domain`, feeds the verdict); the **context indicators are a starting recommendation**, to be confirmed once the Collector has accumulated real data per the deferral in `STACK-DECISIONS.md §8` and RN-13.
+Two buckets. The **decision math is already fixed** (lives in `Domain`, feeds the verdict); the **context indicators are a starting recommendation**, to be confirmed once the DataSync has accumulated real data per the deferral in `STACK-DECISIONS.md §8` and RN-13.
 
 Decision math (FIXED, `Domain`, hand-written, tested — these are the indicators that matter for LP):
 - realized volatility cone (7/30/90d, stdev of log returns);
@@ -69,7 +69,7 @@ Context indicators (RECOMMENDED starting set, Skender, labeled "context, not sig
 - **secondary**: ADX (trend strength, corroborates the regime label);
 - **last / optional**: RSI — most directional, least range-relevant; include only if the principal wants it, and only as visual context, never as a buy/sell signal.
 
-Confirmation rule: the final roster is locked after the Collector runs and we see which indicators actually discriminate good LP setups from bad ones — not decided in the abstract (the lesson from the falsified Programs 1-2). Adding/removing an indicator updates this section and `STACK-DECISIONS.md §8`.
+Confirmation rule: the final roster is locked after the DataSync runs and we see which indicators actually discriminate good LP setups from bad ones — not decided in the abstract (the lesson from the falsified Programs 1-2). Adding/removing an indicator updates this section and `STACK-DECISIONS.md §8`.
 
 ### Chart composition for the Asset View (FSD Tela 2)
 
@@ -87,13 +87,13 @@ All series come from one API payload per asset (`/assets/{id}/chart`):
 ```
 The Graph ──┐                                   ┌─► /assets/{id}/chart  ──► Lightweight Charts
 GeckoTerminal┤                                  ├─► /ranges/candidates, /ranges/estimate-apr ─► Range Advisor
-Coinbase ────┼─► Collector ─► SQLite ─► Application ─► /ranges/evaluate ──► verdict + decision log
+Coinbase ────┼─► DataSync ─► SQLite ─► Application ─► /ranges/evaluate ──► verdict + decision log
 Chainlink ───┤   (24/7 VPS)   (facts,    (Skender ctx │  /regime, /audit,
 Alchemy RPC ─┘                append-only) + Domain    │  /decisions, /channels
                                           verdict math)└─► alerts via INotificationChannel
 ```
 
-Rules: the Collector is the only writer of market facts; the API is read-mostly (writes: decision log, annotations, intents, watchlist, alert rules); the frontend talks only to the API.
+Rules: the DataSync is the only writer of market facts; the API is read-mostly (writes: decision log, annotations, intents, watchlist, alert rules); the frontend talks only to the API.
 
 ## 5. Env vars added by this spec
 

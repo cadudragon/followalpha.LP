@@ -1,13 +1,13 @@
 using Cronos;
 using FollowAlpha.LP.Application.Abstractions;
 
-namespace FollowAlpha.LP.Collector.Jobs;
+namespace FollowAlpha.LP.DataSync.Jobs;
 
 /// <summary>
 /// A <see cref="BackgroundService"/> that runs a job on a cron schedule (Cronos), optionally once at
 /// startup. The host stays thin: scheduling and error isolation live here; the actual work is a use case
 /// resolved per run (ARCHITECTURE.md §7). A single failed run is logged and never tears down the host —
-/// the collector must keep capturing the irrecoverable tick distribution.
+/// the DataSync worker must keep capturing the irrecoverable tick distribution.
 /// </summary>
 public abstract class CronBackgroundService(string cronExpression, bool runOnStartup, IClock clock, ILogger logger)
     : BackgroundService

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace FollowAlpha.LP.Collector.Seeding;
+namespace FollowAlpha.LP.DataSync.Seeding;
 
 /// <summary>The audit wallets file (<c>config/wallets.json</c>): the LP-Audit targets (CLAUDE.md).</summary>
 public sealed class WalletsFile

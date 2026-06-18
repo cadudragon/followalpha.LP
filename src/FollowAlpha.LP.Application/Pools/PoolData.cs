@@ -2,7 +2,7 @@ namespace FollowAlpha.LP.Application.Pools;
 
 /// <summary>
 /// Current pool state from the data source. Raw on-chain integers (<see cref="SqrtPriceX96"/>,
-/// <see cref="Liquidity"/>) are kept as text to avoid precision loss; the Collector maps these into a
+/// <see cref="Liquidity"/>) are kept as text to avoid precision loss; the DataSync worker maps these into a
 /// <c>PoolSnapshot</c> fact.
 /// </summary>
 public sealed record PoolState(

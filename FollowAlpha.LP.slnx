@@ -4,7 +4,7 @@
     <Project Path="src/FollowAlpha.LP.Application/FollowAlpha.LP.Application.csproj" />
     <Project Path="src/FollowAlpha.LP.Infrastructure/FollowAlpha.LP.Infrastructure.csproj" />
     <Project Path="src/FollowAlpha.LP.Api/FollowAlpha.LP.Api.csproj" />
-    <Project Path="src/FollowAlpha.LP.Collector/FollowAlpha.LP.Collector.csproj" />
+    <Project Path="src/FollowAlpha.LP.DataSync/FollowAlpha.LP.DataSync.csproj" />
     <Project Path="src/FollowAlpha.LP.Cli/FollowAlpha.LP.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">

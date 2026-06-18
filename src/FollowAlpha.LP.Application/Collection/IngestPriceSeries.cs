@@ -3,10 +3,10 @@ using FollowAlpha.LP.Application.Prices;
 
 namespace FollowAlpha.LP.Application.Collection;
 
-/// <summary>A watchlist asset to refresh price for (the Collector supplies these from the seeded assets).</summary>
+/// <summary>A watchlist asset to refresh price for (the DataSync worker supplies these from the seeded assets).</summary>
 public sealed record AssetToPrice(string AssetId, string ChainId, string TokenAddress);
 
-/// <summary>Per-asset outcome of a price refresh (for the Collector's structured per-job log, NFR O2).</summary>
+/// <summary>Per-asset outcome of a price refresh (for the DataSync worker's structured per-job log, NFR O2).</summary>
 public sealed record PriceIngestionOutcome(string AssetId, int BarsRead, int BarsInserted, string? Error);
 
 /// <summary>

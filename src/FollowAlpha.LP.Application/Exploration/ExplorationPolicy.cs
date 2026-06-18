@@ -23,7 +23,7 @@ public sealed record ExplorationPolicy(
     public static ExplorationPolicy Default { get; } = new(
         Regime: RegimePolicy.Default,
         CompetingLiquidityBandPct: 2.0m,
-        // Default 2× the collector's pool-snapshot cadence (1h) and price cadence (daily) — API-CONTRACT staleness.
+        // Default 2× the DataSync pool-snapshot cadence (1h) and price cadence (daily) — API-CONTRACT staleness.
         SnapshotStaleAfter: TimeSpan.FromHours(2),
         PriceBarStaleAfter: TimeSpan.FromDays(2));
 }

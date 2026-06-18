@@ -5,21 +5,21 @@ using FollowAlpha.LP.Application.Protocols;
 using FollowAlpha.LP.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace FollowAlpha.LP.Collector.Seeding;
+namespace FollowAlpha.LP.DataSync.Seeding;
 
 /// <summary>
 /// Seeds the working-state reference graph the fact tables depend on via foreign keys (DATA-MODEL.md §3):
 /// chains and DEX protocols (from the registry descriptors), the watchlist pools and their assets (from
 /// config), and the audit wallets (from <c>config/wallets.json</c>). Idempotent insert-if-absent on the
 /// primary keys — safe to run on every startup. Working-state CRUD ports are still deferred
-/// (OPEN-DECISIONS.md); the Collector seeds directly through the context at its composition root.
+/// (OPEN-DECISIONS.md); the DataSync seeds directly through the context at its composition root.
 /// </summary>
 public static class ReferenceDataSeeder
 {
     public static async Task SeedAsync(
         AppDbContext db,
         IDexProtocolRegistry registry,
-        CollectorOptions options,
+        DataSyncOptions options,
         WalletsFile wallets,
         CancellationToken cancellationToken = default)
     {

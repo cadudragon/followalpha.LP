@@ -4,10 +4,10 @@ using FollowAlpha.LP.Application.Pools;
 
 namespace FollowAlpha.LP.Application.Collection;
 
-/// <summary>A watchlist pool to snapshot (the Collector supplies these from configuration/working state).</summary>
+/// <summary>A watchlist pool to snapshot (the DataSync worker supplies these from configuration/working state).</summary>
 public sealed record PoolToSnapshot(string PoolId, string ChainId, string PoolAddress);
 
-/// <summary>Per-pool outcome of a snapshot run (for the Collector's structured per-job log, NFR O2).</summary>
+/// <summary>Per-pool outcome of a snapshot run (for the DataSync worker's structured per-job log, NFR O2).</summary>
 public sealed record PoolSnapshotOutcome(string PoolId, bool PoolSnapshotInserted, int TickRowsInserted, string? Error);
 
 /// <summary>
@@ -15,7 +15,7 @@ public sealed record PoolSnapshotOutcome(string PoolId, bool PoolSnapshotInserte
 /// volume, and the full per-tick liquidity distribution as append-only facts. Idempotent by construction —
 /// the snapshot timestamp (<see cref="IClock"/>) is the natural key, so re-running with the same clock
 /// inserts nothing new. The tick distribution is the irrecoverable datum that justifies the always-on
-/// Collector. The use case never throws for one bad pool: it records the error and continues.
+/// DataSync worker. The use case never throws for one bad pool: it records the error and continues.
 /// </summary>
 public sealed class IngestPoolSnapshots(IPoolDataSource poolData, ISnapshotStore snapshots, IClock clock)
 {

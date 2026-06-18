@@ -1,8 +1,8 @@
-# FollowAlpha.LP Collector — always-on Worker host (ARCHITECTURE.md §7, IMPLEMENTATION-PLAN §2).
+# FollowAlpha.LP DataSync — always-on Worker host (ARCHITECTURE.md §7, IMPLEMENTATION-PLAN §2).
 # Build from the REPO ROOT so the build context includes the props files and every referenced project:
-#   docker build -f src/FollowAlpha.LP.Collector/Dockerfile -t followalpha-lp-collector .
+#   docker build -f src/FollowAlpha.LP.DataSync/Dockerfile -t followalpha-lp-datasync .
 #
-# The Collector is the only deployable in Phase 2. It snapshots the irrecoverable tick-liquidity
+# The DataSync is the only deployable in Phase 2. It snapshots the irrecoverable tick-liquidity
 # distribution continuously, so the SQLite database MUST live on a persistent volume (see DEPLOYMENT.md).
 
 # ---- build ----
@@ -17,12 +17,12 @@ COPY Directory.Build.props Directory.Packages.props NuGet.config .editorconfig .
 COPY src/FollowAlpha.LP.Domain/FollowAlpha.LP.Domain.csproj                 src/FollowAlpha.LP.Domain/
 COPY src/FollowAlpha.LP.Application/FollowAlpha.LP.Application.csproj       src/FollowAlpha.LP.Application/
 COPY src/FollowAlpha.LP.Infrastructure/FollowAlpha.LP.Infrastructure.csproj src/FollowAlpha.LP.Infrastructure/
-COPY src/FollowAlpha.LP.Collector/FollowAlpha.LP.Collector.csproj           src/FollowAlpha.LP.Collector/
-RUN dotnet restore src/FollowAlpha.LP.Collector/FollowAlpha.LP.Collector.csproj
+COPY src/FollowAlpha.LP.DataSync/FollowAlpha.LP.DataSync.csproj           src/FollowAlpha.LP.DataSync/
+RUN dotnet restore src/FollowAlpha.LP.DataSync/FollowAlpha.LP.DataSync.csproj
 
 # Copy the rest of the source and publish a self-contained-framework build.
 COPY src/ src/
-RUN dotnet publish src/FollowAlpha.LP.Collector/FollowAlpha.LP.Collector.csproj \
+RUN dotnet publish src/FollowAlpha.LP.DataSync/FollowAlpha.LP.DataSync.csproj \
     -c Release -o /app/publish --no-restore -p:UseAppHost=false
 
 # ---- runtime ----
@@ -43,4 +43,4 @@ USER app
 VOLUME ["/app/data"]
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "FollowAlpha.LP.Collector.dll"]
+ENTRYPOINT ["dotnet", "FollowAlpha.LP.DataSync.dll"]

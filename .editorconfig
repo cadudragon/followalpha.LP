@@ -53,6 +53,6 @@ dotnet_diagnostic.CA1861.severity = none
 
 # Hosts do simple structured logging at human-decision cadence; the high-performance logging analyzers
 # (LoggerMessage delegates / deferred argument evaluation) are noise here, not in Domain/Application.
-[src/FollowAlpha.LP.{Api,Cli,Collector}/**.cs]
+[src/FollowAlpha.LP.{Api,Cli,DataSync}/**.cs]
 dotnet_diagnostic.CA1848.severity = none
 dotnet_diagnostic.CA1873.severity = none

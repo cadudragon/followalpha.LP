@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 
-namespace FollowAlpha.LP.Collector.Jobs;
+namespace FollowAlpha.LP.DataSync.Jobs;
 
 /// <summary>
-/// Shared health state for the Collector (NFR O2/A3): the last successful run time per job, surfaced by
+/// Shared health state for the DataSync (NFR O2/A3): the last successful run time per job, surfaced by
 /// <c>/health</c> alongside per-pool snapshot freshness. Thread-safe (jobs run on background threads).
 /// </summary>
-public sealed class CollectorHealth
+public sealed class DataSyncHealth
 {
     private readonly ConcurrentDictionary<string, DateTimeOffset> _lastRunByJob = new();
 

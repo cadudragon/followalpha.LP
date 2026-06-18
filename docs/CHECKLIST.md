@@ -27,13 +27,13 @@ Read: `ARCHITECTURE.md` §4, `LP-KNOWLEDGE.md` §2-3 §6, `tools/oracle/README.m
 - [x] **1.4** Estimators (pure, data-as-input): realized vol, trendiness/path-efficiency, implied vol (`2·fee·√(vol/TVL)·√365`), band survival, fee share. Gate: unit-tested.
 - [x] **1.5** `RangeVerdictCalculator` (→ `Open`/`DoNotOpen` + input snapshot) and `ChannelSimulator` (full series incl. breakouts). Gate: unit-tested; Domain still zero-package, purity tests green. Tag `phase-1-done`.
 
-## Phase 2 — Data adapters & Collector  · precondition `phase-1-done` · tag `phase-2-done`
+## Phase 2 — Data adapters & DataSync worker  · precondition `phase-1-done` · tag `phase-2-done`
 Read: `ARCHITECTURE.md` §6-7, `DATA-MODEL.md`, `TECH-STACK.md` §2, `NFR.md` §3-4.
 Also read: `OPEN-DECISIONS.md` for accepted deferrals, operational requirements, and analyst-review flags that must survive context resets.
 - [x] **2.1** EF Core + SQLite stores realizing `DATA-MODEL.md`; migrations; append-only repositories (insert+query only) for facts/decision/intent. Gate: append-only enforced and tested; idempotent insert-if-absent on natural keys.
 - [x] **2.2** The Graph gateway adapter (`IPoolDataSource`): pool state, day volume, tick liquidity distribution; Uni v3 on Arbitrum + Base descriptors. Gate: integration test vs recorded fixtures; subgraph IDs recorded in PR.
 - [x] **2.3** Nethereum event reader (`IChainEventReader`): mint/burn/collect + gas for configured wallets. Gate: integration test vs recorded fixtures.
-- [x] **2.4** Collector host (Worker + Cronos): scheduled pool/tick snapshots, price refresh, wallet sync (owner-at-time attribution + incremental cursor/chunking); `/health` freshness. Gate: jobs idempotent (test); runs locally with env vars; no secret in repo.
+- [x] **2.4** DataSync host (Worker + Cronos): scheduled pool/tick snapshots, price refresh, wallet sync (owner-at-time attribution + incremental cursor/chunking); `/health` freshness. Gate: jobs idempotent (test); runs locally with env vars; no secret in repo.
 - [x] **2.5** Deployment artifact (Dockerfile) + `docs/DEPLOYMENT.md` runbook. Gate (agent): runbook complete; image builds and boots locally. Tag `phase-2-done`. **`phase-2-done` = agent gate green + deploy-ready (Docker/runbook); it does NOT depend on a real cloud deploy.**
 - [ ] **2.6** *(principal, human — operational follow-up, does NOT block Phase 3)* Always-on Oracle/VPS deploy via runbook; confirm snapshots accumulating on both chains. **Decided 2026-06-17: deferred until after Phase 3 full proves value/edge.** Until then, local/intermittent runs are acceptable for smoke and initial collection — with the known, accepted loss of tick-liquidity during downtime (never synthetically backfilled). Tick when the always-on deploy is actually done.
 
@@ -41,6 +41,7 @@ Also read: `OPEN-DECISIONS.md` for accepted deferrals, operational requirements,
 Read: `API-CONTRACT.md`, `FSD` UC-02/03/09, `TECH-STACK.md` §1, `NFR.md` §1-2.
 - [x] **3.1** API host skeleton + `X-Api-Key` auth + OpenAPI + RFC7807 errors (incl. `422` insufficient-data). Gate: health endpoint + auth tested.
 - [x] **3.2** Asset/pool exploration: `/assets`, `/assets/{id}/chart`, `/assets/{id}/regime`, `/assets/{id}/pools`, `/pools/{poolId}`. Gate: use-case tested; regime never emits direction (RN-07); pool table exposes fee tier, volume/TVL, IV, and competing liquidity. **Scope notes (2026-06-17):** (a) `/chart` is staged — 3.2 delivers `{ candles[], regimeTimeline[], rvVsPoolIv{} }`; the decorative Asset-View overlays (`emaOverlays`/`structuralLevels`/`empiricalRangeBands`/`contextIndicators`) are deferred to Phase 6 per `API-CONTRACT.md`. (b) Regime classification is a **new pure Domain component** (`RegimeClassifier` + `RegimePolicy` mapping RV-percentile + trendiness → `RANGE`/`TRENDING`/`TRANSITION`), not just reuse of the Phase-1 estimators; its thresholds and the `competingLiquidity` definition are `analyst-review pending` (`OPEN-DECISIONS.md`).
+- [x] **3.2b** DataSync semantics/naming cleanup before APR work: replace "Collector as always-on source of truth/oracle-like collector" language with **DataSync/backfill/cache/materializer** semantics across docs and, if still cheap, rename `FollowAlpha.LP.Collector` to `FollowAlpha.LP.DataSync`. Gate: docs and code names are coherent; price data is described as provider/oracle backfill/cache, not self-collected truth; pool/tick and wallet data are described as provider/RPC/indexer-backed sync/cache with provenance; no trading/range logic changes; no new data provider implementation; build/test green.
 - [ ] **3.3** `EstimateRangeApr` (`/ranges/estimate-apr`): self-dilution, while-in-range vs time-adjusted, 7d/30d sensitivity. Gate: use-case tested; cross-check vs Metrix documented.
 - [ ] **3.4** `SuggestRangeCandidates` (`/ranges/candidates`): deterministic predeclared band grid ranked by IV-vs-RV, band survival, expected fees, IL, and intent fit. Gate: tested; no optimizer/threshold-tuning; candidate reasons are included.
 - [ ] **3.5** `EvaluateRange` (`/ranges/evaluate`) → verdict + inputs; appends immutable `DecisionLogEntry` (hash) every call; `/decisions` read. Gate: log immutable+retrievable (tested); `422` on thin data.
@@ -67,7 +68,7 @@ Read: `FSD` §5 (Telas), `TECH-STACK.md` §3, `API-CONTRACT.md`.
 
 ## Phase 7 — Alerts & drift  · precondition `phase-6-done` · tag `phase-7-done`
 Read: `FSD` UC-07/UC-08, `ARCHITECTURE.md` (INotificationChannel).
-- [ ] **7.1** `EvaluateAlertRules` in Collector + `INotificationChannel` adapter (channel chosen with principal) + alert-rule CRUD. Gate: a real alert fires end-to-end; inform-only (no execution path). Tag `phase-7-done`.
+- [ ] **7.1** `EvaluateAlertRules` in the DataSync worker + `INotificationChannel` adapter (channel chosen with principal) + alert-rule CRUD. Gate: a real alert fires end-to-end; inform-only (no execution path). Tag `phase-7-done`.
 
 ## Phase 8 — Forward-tracking  · precondition `phase-6-done` · recurring
 Read: `IMPLEMENTATION-PLAN.md` Phase 8, `LP-KNOWLEDGE.md` §6.1.

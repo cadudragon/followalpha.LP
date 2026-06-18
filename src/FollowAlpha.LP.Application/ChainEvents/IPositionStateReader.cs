@@ -5,7 +5,7 @@ namespace FollowAlpha.LP.Application.ChainEvents;
 /// position facts (ARCHITECTURE.md §5/§6). These are read-only contract calls (<c>eth_call</c>): the
 /// NonfungiblePositionManager <c>positions(tokenId)</c> (ticks + the token pair + fee tier), the factory's
 /// <c>getPool</c> (the pool address), and ERC-20 <c>decimals()</c> (to scale raw amounts to human units).
-/// The Collector composes these during wallet sync; the addresses (NPM, factory) resolve from the
+/// The DataSync worker composes these during wallet sync; the addresses (NPM, factory) resolve from the
 /// <c>IDexProtocolRegistry</c> descriptor for the chain.
 /// </summary>
 public interface IPositionStateReader

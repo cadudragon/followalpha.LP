@@ -6,9 +6,9 @@ using FollowAlpha.LP.Application.Persistence;
 using FollowAlpha.LP.Application.Pools;
 using FollowAlpha.LP.Application.Prices;
 using FollowAlpha.LP.Application.Protocols;
-using FollowAlpha.LP.Collector;
-using FollowAlpha.LP.Collector.Jobs;
-using FollowAlpha.LP.Collector.Seeding;
+using FollowAlpha.LP.DataSync;
+using FollowAlpha.LP.DataSync.Jobs;
+using FollowAlpha.LP.DataSync.Seeding;
 using FollowAlpha.LP.Infrastructure.ChainEvents;
 using FollowAlpha.LP.Infrastructure.Persistence;
 using FollowAlpha.LP.Infrastructure.Protocols;
@@ -26,9 +26,9 @@ builder.Host.UseSerilog((ctx, cfg) => cfg
     .Enrich.FromLogContext()
     .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture));
 
-// Options (Collector section + env). Secrets are read from env/user-secrets, never bound from the repo.
-builder.Services.Configure<CollectorOptions>(builder.Configuration.GetSection(CollectorOptions.SectionName));
-var options = builder.Configuration.GetSection(CollectorOptions.SectionName).Get<CollectorOptions>() ?? new CollectorOptions();
+// Options (DataSync section + env). Secrets are read from env/user-secrets, never bound from the repo.
+builder.Services.Configure<DataSyncOptions>(builder.Configuration.GetSection(DataSyncOptions.SectionName));
+var options = builder.Configuration.GetSection(DataSyncOptions.SectionName).Get<DataSyncOptions>() ?? new DataSyncOptions();
 var dbPath = builder.Configuration["LP_DB_PATH"] ?? options.DbPath;
 
 // Persistence — SQLite with foreign keys enforced at runtime (OPEN-DECISIONS operational requirement).
@@ -43,7 +43,7 @@ builder.Services.AddScoped<IWalletSyncCursorStore, EfWalletSyncCursorStore>();
 // Shared singletons.
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IDexProtocolRegistry>(new ConfiguredDexProtocolRegistry(DefaultDexProtocols.UniswapV3));
-builder.Services.AddSingleton<CollectorHealth>();
+builder.Services.AddSingleton<DataSyncHealth>();
 
 // The Graph data sources (typed HttpClients + standard Polly resilience at the composition root).
 builder.Services.AddSingleton(new TheGraphGatewayOptions { ApiKey = builder.Configuration["GRAPH_API_KEY"] ?? string.Empty });
@@ -82,7 +82,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Health: per-pool snapshot freshness + last job runs (NFR A3/O2). 503 when any pool is stale.
-app.MapGet("/health", async (ISnapshotStore snapshots, IOptions<CollectorOptions> opts, IClock clock, CollectorHealth health) =>
+app.MapGet("/health", async (ISnapshotStore snapshots, IOptions<DataSyncOptions> opts, IClock clock, DataSyncHealth health) =>
 {
     var now = clock.UtcNow;
     var staleAfter = TimeSpan.FromSeconds(opts.Value.PoolSnapshotFreshnessSeconds * 2);

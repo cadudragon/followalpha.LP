@@ -1,8 +1,8 @@
 // FollowAlpha.LP.Api — ASP.NET Core minimal API host (composition root).
 //
 // Phase 3.2 adds the first real product surface: asset/pool exploration (UC-02), read-only over the data the
-// Collector persists. The Range Advisor (ranges/verdict/backtest/decision-log) lands in 3.3-3.6. The API is
-// a reader: it never migrates or writes the database (the Collector owns that).
+// DataSync worker persists. The Range Advisor (ranges/verdict/backtest/decision-log) lands in 3.3-3.6. The API is
+// a reader: it never migrates or writes the database (the DataSync worker owns that).
 using FollowAlpha.LP.Api.Errors;
 using FollowAlpha.LP.Api.Security;
 using FollowAlpha.LP.Application.Abstractions;
@@ -21,7 +21,7 @@ builder.Services.AddExceptionHandler<InsufficientDataExceptionHandler>();
 // OpenAPI document (TECH-STACK §1). Served at /openapi/v1.json; the generated spec is the living contract.
 builder.Services.AddOpenApi("v1");
 
-// Persistence — read-only over the Collector's SQLite DB (env/appsettings; the API never migrates it).
+// Persistence — read-only over the DataSync worker's SQLite DB (env/appsettings; the API never migrates it).
 var dbPath = builder.Configuration["LP_DB_PATH"] ?? "./data/followalpha-lp.db";
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath};Foreign Keys=True"));
 builder.Services.AddSingleton<IClock, SystemClock>();
@@ -43,7 +43,7 @@ app.UseExceptionHandler();
 app.MapOpenApi();
 
 // Liveness/readiness for ops — intentionally unauthenticated and a real endpoint. The full
-// collector-freshness /v1/health (API-CONTRACT §3) is wired in a later phase; this is the skeleton.
+// DataSync-freshness /v1/health (API-CONTRACT §3) is wired in a later phase; this is the skeleton.
 app.MapGet("/v1/health", () => Results.Ok(new { status = "ok", timeUtc = DateTimeOffset.UtcNow }))
     .WithName("Health");
 

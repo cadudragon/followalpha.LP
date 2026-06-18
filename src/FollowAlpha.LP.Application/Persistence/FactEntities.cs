@@ -37,7 +37,7 @@ public sealed class PoolSnapshot
 
 /// <summary>
 /// Per-tick liquidity distribution at a moment — the datum that cannot be reconstructed retroactively
-/// (drives the always-on Collector). Natural key: (TenantId, PoolId, AsOfUtc, Tick).
+/// (drives the always-on DataSync worker). Natural key: (TenantId, PoolId, AsOfUtc, Tick).
 /// </summary>
 public sealed class TickLiquiditySnapshot
 {

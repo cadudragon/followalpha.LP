@@ -41,7 +41,7 @@ Authored 2026-06-14. Binding contract for the persistence layer (EF Core code-fi
 
 **PoolSnapshot** — natural key (`PoolId`, `AsOfUtc`). Fields: `CurrentTick`, `SqrtPriceX96` (text), `Liquidity` (text), `Tvl` (decimal), `DayVolumeUsd` (decimal), `Source`. One row per scheduled snapshot.
 
-**TickLiquiditySnapshot** — natural key (`PoolId`, `AsOfUtc`, `Tick`). Fields: `LiquidityNet` (text), `LiquidityGross` (text). The per-tick distribution — the data that cannot be reconstructed retroactively (drives the always-on Collector).
+**TickLiquiditySnapshot** — natural key (`PoolId`, `AsOfUtc`, `Tick`). Fields: `LiquidityNet` (text), `LiquidityGross` (text). The per-tick distribution — the data that cannot be reconstructed retroactively (drives the always-on DataSync).
 
 **PositionEvent** — natural key (`ChainId`, `TxHash`, `LogIndex`). Fields: `WalletId` (fk), `PoolId` (fk), `EventType` (`MINT`|`BURN`|`COLLECT`), `TickLower`, `TickUpper`, `LiquidityDelta` (text), `Amount0`, `Amount1`, `FeesCollected0`, `FeesCollected1`, **native gas raw** (`GasUsed` text, `EffectiveGasPriceWei` text nullable, `NativeGasCostWei` text nullable), `GasCostUsd` (decimal, **nullable**), `BlockTimeUtc`. Source of audit truth (fees reconciled against `COLLECT`). **Gas (decided 2026-06-17):** the irreversible on-chain native gas is persisted raw; `GasCostUsd` stays null until a reliable historical price source lands — never zeroed or filled with a current-price guess that would contaminate an audit.
 
@@ -85,4 +85,4 @@ Repository implementations for `PriceBar`, `PoolSnapshot`, `TickLiquiditySnapsho
 
 ## 5. Retention & growth (see NFR.md §4)
 
-`TickLiquiditySnapshot` is the dominant growth driver (per-pool, per-snapshot, per-tick). Snapshot cadence and watchlist size bound it; retention/rollup policy is defined in `NFR.md` and revisited when the Collector's real volume is known. Facts are never deleted to "clean up"; rollup (if needed) writes a derived aggregate and keeps raw rows or archives them — decided with data in hand, not pre-emptively.
+`TickLiquiditySnapshot` is the dominant growth driver (per-pool, per-snapshot, per-tick). Snapshot cadence and watchlist size bound it; retention/rollup policy is defined in `NFR.md` and revisited when the DataSync's real volume is known. Facts are never deleted to "clean up"; rollup (if needed) writes a derived aggregate and keeps raw rows or archives them — decided with data in hand, not pre-emptively.

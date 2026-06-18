@@ -139,7 +139,7 @@ A mesma range pode mudar de veredito com outra intenção: como ACCUMULATE (sing
 ### UC-07 — Alertas (adicionado pelo principal, 2026-06-12)
 
 1. Usuário define regras de alerta: preço aproximando-se da borda de uma range aberta (distância configurável), mudança de regime de um ativo da watchlist, IV de um pool da watchlist cruzando um limiar definido.
-2. O Collector avalia as regras a cada ciclo e dispara notificações pelo canal configurado (mecanismo a definir na implementação: Telegram, e-mail ou push).
+2. O DataSync avalia as regras a cada ciclo e dispara notificações pelo canal configurado (mecanismo a definir na implementação: Telegram, e-mail ou push).
 3. Alertas **informam**; nunca executam nada (RN-05) e nunca recomendam direção (RN-07/RN-13).
 
 ### UC-08 — Monitor pós-OPEN (adicionado pelo principal, 2026-06-12)

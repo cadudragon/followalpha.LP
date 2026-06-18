@@ -3,7 +3,7 @@ namespace FollowAlpha.LP.Application.Pools;
 /// <summary>
 /// Reads pool state, day volume, and the tick-liquidity distribution for a pool (ARCHITECTURE.md §5/§6;
 /// The Graph in v1). Read-only; the chain id resolves the protocol descriptor via the registry. The
-/// tick distribution is the irrecoverable datum that drives the always-on Collector.
+/// tick distribution is the irrecoverable datum that drives the always-on DataSync worker.
 /// </summary>
 public interface IPoolDataSource
 {

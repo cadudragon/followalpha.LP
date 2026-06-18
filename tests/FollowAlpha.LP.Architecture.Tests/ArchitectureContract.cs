@@ -11,7 +11,7 @@ internal static class ArchitectureContract
     public const string Application = "FollowAlpha.LP.Application";
     public const string Infrastructure = "FollowAlpha.LP.Infrastructure";
     public const string Api = "FollowAlpha.LP.Api";
-    public const string Collector = "FollowAlpha.LP.Collector";
+    public const string DataSync = "FollowAlpha.LP.DataSync";
     public const string Cli = "FollowAlpha.LP.Cli";
 
     public static Assembly DomainAssembly => typeof(LP.Domain.AssemblyReference).Assembly;

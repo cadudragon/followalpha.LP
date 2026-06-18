@@ -6,7 +6,7 @@ Authored 2026-06-12 by the project architect. This is a binding contract for imp
 
 A decision-support tool for concentrated-liquidity LPing (Program 3 charter, see `LP-KNOWLEDGE.md`): it classifies volatility regimes, compares pools, prices ranges (fees expected vs IL expected, pool-implied vol vs forecast vol) and renders auditable **OPEN / DON'T OPEN** verdicts, replays range/channel behavior historically, and audits past LP positions as calibration. It **recommends; the human executes**. Read-only on-chain.
 
-Operational profile: single user today; potentially SaaS later. Always-on deployment (VPS) because tick-level liquidity distributions cannot be reconstructed retroactively — the collector snapshots them continuously from day 1.
+Operational profile: single user today; potentially SaaS later. Always-on deployment (VPS) because tick-level liquidity distributions cannot be reconstructed retroactively — the datasync snapshots them continuously from day 1.
 
 ## 2. Architectural style
 
@@ -23,7 +23,7 @@ src/
   FollowAlpha.LP.Application/       # use cases + ports — references Domain
   FollowAlpha.LP.Infrastructure/    # adapters — references Application, Domain
   FollowAlpha.LP.Api/               # ASP.NET Core minimal API host
-  FollowAlpha.LP.Collector/         # Worker Service host (scheduled snapshots)
+  FollowAlpha.LP.DataSync/         # Worker Service host (scheduled snapshots)
   FollowAlpha.LP.Cli/               # thin CLI host (Phase 1-3 interface, ops)
 frontend/                           # Next.js app (separate; consumes the API)
 tests/
@@ -110,7 +110,7 @@ Use cases (one class per operation, CQRS-lite, no MediatR needed):
 - Module 2 / Range Advisor: `CompareAssetPools`, `SuggestRangeCandidates` (deterministic predeclared band grid, no optimizer), `EstimateRangeApr`, `EvaluateRange` (pool, band, intent → verdict, persisted to decision log), `BacktestBandSurvival`, `ReconcileFeeAprEstimateVsRealized`, `AnalyzeIvVsRvOutcome`.
 - Module 3: `SimulateChannel`, `EvaluateChannelPolicy`.
 - Module 0 / calibration: `AuditWalletPositions` (wallet → per-position audit: fees collected vs IL vs HODL vs intent benchmark, costs included).
-- Ingestion: `SnapshotPool`, `IngestPositionEvents`, `IngestPriceSeries` (called by Collector).
+- Ingestion: `SnapshotPool`, `IngestPositionEvents`, `IngestPriceSeries` (called by DataSync).
 
 Ports (interfaces owned by Application):
 
@@ -125,7 +125,7 @@ Ports (interfaces owned by Application):
 
 **Persistence ports are grouped by write semantics, not only by UI module (decided 2026-06-15).** `IPositionStore` owns the rebuildable `Position` projection (upsert). Immutable position facts and intent history use dedicated append-only ports: `IPositionEventStore` and `IIntentRecordStore`. This preserves append-only enforcement by interface shape and keeps projection upserts separate from fact/history ingestion. So the persistence port set is: `IPriceStore`, `ISnapshotStore` (pool + tick, separate methods/tests — tick liquidity is the irrecoverable datum), `IPositionEventStore`, `IIntentRecordStore`, `IDecisionLog`, and the projection `IPositionStore`; `IBacktestRunStore`/`IAuditReportStore` arrive with their Phase 3/4 use cases (their tables are already in the 2.1 schema). Idempotent insert-if-absent applies to **facts** (natural keys); decision-log and intent records are **append by identity** — RN-03 means two identical evaluations at different times are two events, not a duplicate, so they are never de-duplicated by content hash (the hash is tamper-evidence only).
 
-Monitoring use cases (UC-07/UC-08, FSD v1.1): `EvaluateAlertRules` (Collector-driven) and `MonitorOpenPositions` (fees vs IL race, verdict-premise drift flags — informational only, never an execution path).
+Monitoring use cases (UC-07/UC-08, FSD v1.1): `EvaluateAlertRules` (DataSync-driven) and `MonitorOpenPositions` (fees vs IL race, verdict-premise drift flags — informational only, never an execution path).
 
 Historical replay use cases (UC-09, FSD v1.1; decided 2026-06-14): a **thin, custom, LP-native** replay layer — no external backtesting engine in the runtime. Orchestration in Application; all math is the pure Domain kernel (band survival, fee share, IL path, channel simulation); historical data from the stores/ports. Use cases: `BacktestBandSurvival`, `ReconcileFeeAprEstimateVsRealized`, `AnalyzeIvVsRvOutcome`, `SimulateChannelPolicy`. These are **descriptive / input-calibration** (category A): measure the empirical distributions that feed the verdict and reconcile estimates against realized outcomes. **Deterministic, no optimizer** — no parameter search, no threshold tuning against historical outcomes (RN-14). Verdict-edge evaluation ("would OPEN have beaten DON'T OPEN") is category B and **out of v1**: measure verdict edge via the decision log auditing itself on new forward data, or a separate pre-registered walk-forward study — never in-sample. LEAN may be an *external* research tool for cross-checking pipelines, never a product dependency.
 
@@ -138,7 +138,7 @@ Historical replay use cases (UC-09, FSD v1.1; decided 2026-06-14): a **thin, cus
 
 ## 7. Hosts
 
-- **Collector** (Worker Service, runs on the VPS): scheduled jobs — pool snapshots (state, day volume, tick liquidity distribution) for a configured watchlist, price series refresh, wallet event sync. Idempotent; health endpoint; structured logs (Serilog). Missing a run is recoverable for events/prices, NOT for tick distributions — hence always-on.
+- **DataSync** (Worker Service, runs on the VPS): scheduled jobs — pool snapshots (state, day volume, tick liquidity distribution) for a configured watchlist, price series refresh, wallet event sync. Idempotent; health endpoint; structured logs (Serilog). Missing a run is recoverable for events/prices, NOT for tick distributions — hence always-on.
 - **Api** (ASP.NET Core minimal APIs): REST + OpenAPI. Endpoints mirror use cases (`/assets`, `/regime`, `/ranges/evaluate`, `/ranges/backtest`, `/channels/simulate`, `/audit`, `/decisions`). Auth: API-key middleware seam (single key today; real identity later). CORS for the frontend origin.
 - **Cli**: thin wrapper over the same use cases for headless operation and ops tasks (run Range Advisor flow, replay, audit, trigger snapshot, export decision log).
 - **frontend/** (Next.js + TypeScript): dashboards — asset-first range evaluator (the OPEN/DON'T OPEN screen with its inputs), replay/backtest views after the value gate, channel simulator, audit report, decision-log review. Consumes the OpenAPI-generated client. Charts: lightweight-charts or recharts. **No business logic client-side** — the API is the single source of verdicts.

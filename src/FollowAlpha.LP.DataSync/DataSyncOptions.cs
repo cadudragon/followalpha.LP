@@ -1,15 +1,15 @@
 using FollowAlpha.LP.Application.Pools;
 
-namespace FollowAlpha.LP.Collector;
+namespace FollowAlpha.LP.DataSync;
 
 /// <summary>
-/// Collector configuration (bound from the <c>Collector</c> config section + env overrides). Secrets are
+/// DataSync configuration (bound from the <c>DataSync</c> config section + env overrides). Secrets are
 /// never here — they come from env/user-secrets (GRAPH_API_KEY, RPC_URL_*, ALCHEMY_API_KEY). The watchlist
 /// and wallets drive seeding and the scheduled jobs.
 /// </summary>
-public sealed class CollectorOptions
+public sealed class DataSyncOptions
 {
-    public const string SectionName = "Collector";
+    public const string SectionName = "DataSync";
 
     /// <summary>SQLite file path (overridden by <c>LP_DB_PATH</c> when set).</summary>
     public string DbPath { get; set; } = "./data/followalpha-lp.db";

@@ -3,7 +3,7 @@ using FollowAlpha.LP.Application.Collection;
 using FollowAlpha.LP.Application.Pools;
 using Microsoft.Extensions.Options;
 
-namespace FollowAlpha.LP.Collector.Jobs;
+namespace FollowAlpha.LP.DataSync.Jobs;
 
 /// <summary>
 /// Scheduled price-series refresh: runs <see cref="IngestPriceSeries"/> over the distinct tokens of the
@@ -14,14 +14,14 @@ namespace FollowAlpha.LP.Collector.Jobs;
 public sealed class PriceRefreshJob : CronBackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptions<CollectorOptions> _options;
-    private readonly CollectorHealth _health;
+    private readonly IOptions<DataSyncOptions> _options;
+    private readonly DataSyncHealth _health;
 
     public PriceRefreshJob(
         IServiceScopeFactory scopeFactory,
-        IOptions<CollectorOptions> options,
+        IOptions<DataSyncOptions> options,
         IClock clock,
-        CollectorHealth health,
+        DataSyncHealth health,
         ILogger<PriceRefreshJob> logger)
         : base(options.Value.PriceRefreshCron, options.Value.RunJobsOnStartup, clock, logger)
     {

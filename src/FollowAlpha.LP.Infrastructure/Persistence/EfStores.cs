@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FollowAlpha.LP.Infrastructure.Persistence;
 
 // EF Core implementations of the persistence ports. Idempotent insert-if-absent is a provider-agnostic
-// query-then-add on the natural key (single-writer Collector; no provider-specific UPSERT, per PT2).
+// query-then-add on the natural key (single-writer DataSync worker; no provider-specific UPSERT, per PT2).
 // Append-only stores expose no update/delete; Position is the rebuildable projection (upsert).
 
 /// <summary>Append-only price-bar store.</summary>

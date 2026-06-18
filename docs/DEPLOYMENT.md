@@ -1,18 +1,18 @@
-# DEPLOYMENT.md — FollowAlpha.LP Collector (VPS runbook)
+# DEPLOYMENT.md — FollowAlpha.LP DataSync (VPS runbook)
 
-The Collector is the only deployable in Phase 2 (`IMPLEMENTATION-PLAN.md §2`). It is an always-on host
+The DataSync is the only deployable in Phase 2 (`IMPLEMENTATION-PLAN.md §2`). It is an always-on host
 (`ARCHITECTURE.md §7`) that runs scheduled jobs and exposes a `/health` endpoint. It is **designed
 always-on**: the per-tick liquidity distribution it snapshots cannot be reconstructed retroactively. A
 missed run is recoverable for events and prices, **never** for tick distributions — so once it is running
 24/7 the box should stay up and the database must live on durable storage.
 
-> **Read-only on-chain.** The Collector only reads The Graph and public JSON-RPC. There is no signing code
+> **Read-only on-chain.** The DataSync only reads The Graph and public JSON-RPC. There is no signing code
 > and no private key anywhere in this system. Never add one.
 
 > **Deployment timing (decided 2026-06-17).** `phase-2-done` only requires this to be **deploy-ready**
 > (image builds + boots, runbook complete). The **always-on Oracle/VPS deployment is intentionally deferred
 > until after Phase 3 full has proven sufficient value/edge** — we do not pay for 24/7 infrastructure before
-> the engine earns it. Until then, **running the Collector locally or intermittently is acceptable** for
+> the engine earns it. Until then, **running the DataSync locally or intermittently is acceptable** for
 > smoke and initial collection. Accept that **tick-liquidity gaps during any downtime are permanent and are
 > never synthetically backfilled** (`pool-snapshot`/`wallet-sync`/`price-refresh` close their own gaps on the
 > next run via idempotent re-ingestion and the wallet-sync cursor; the tick distribution does not). When the
@@ -25,9 +25,9 @@ missed run is recoverable for events and prices, **never** for tick distribution
 
 | Component | Project | Role |
 |---|---|---|
-| Collector host | `src/FollowAlpha.LP.Collector` | `pool-snapshot` + `wallet-sync` + `price-refresh` cron jobs, seeding, `/health` |
+| DataSync host | `src/FollowAlpha.LP.DataSync` | `pool-snapshot` + `wallet-sync` + `price-refresh` cron jobs, seeding, `/health` |
 
-Three scheduled jobs (defaults in `appsettings.json`, overridable via the `Collector` config section or env):
+Three scheduled jobs (defaults in `appsettings.json`, overridable via the `DataSync` config section or env):
 
 | Job | Default cron | What it captures |
 |---|---|---|
@@ -35,7 +35,7 @@ Three scheduled jobs (defaults in `appsettings.json`, overridable via the `Colle
 | `wallet-sync` | `*/15 * * * *` (every 15 min) | Audit-wallet mint/burn/collect events, **attributed by owner-at-time**, enriched + append-only |
 | `price-refresh` | `5 0 * * *` (daily) | Daily USD OHLCV (`PriceBar`) per watchlist token, from The Graph `tokenDayData` |
 
-All jobs also run once at startup when `Collector:RunJobsOnStartup=true` (the default), so a fresh deploy
+All jobs also run once at startup when `DataSync:RunJobsOnStartup=true` (the default), so a fresh deploy
 fills data without waiting for the first tick. All are **idempotent** — re-running over an overlapping
 window inserts nothing new (pool snapshots key on the run timestamp; position events on `(chain, txHash,
 logIndex)`; price bars on `(asset, resolution, openTime)`). A single failing pool/wallet/asset is logged and
@@ -69,16 +69,16 @@ Values are **never** committed. Copy `.env.example` to `.env` and fill it in.
 | `GRAPH_API_KEY` | yes | The Graph decentralized gateway key (pool snapshots) |
 | `RPC_URL_ARBITRUM` | one of these per chain | Arbitrum One JSON-RPC endpoint (wallet sync) |
 | `RPC_URL_BASE` | one of these per chain | Base JSON-RPC endpoint (wallet sync) |
-| `ALCHEMY_API_KEY` | optional | When set and `RPC_URL_<CHAIN>` is empty, the Collector builds the Alchemy URL for that chain |
+| `ALCHEMY_API_KEY` | optional | When set and `RPC_URL_<CHAIN>` is empty, the DataSync builds the Alchemy URL for that chain |
 | `LP_DB_PATH` | no (defaults) | SQLite file path. Default `./data/followalpha-lp.db`; set to the volume path in containers |
 
-Either set `RPC_URL_ARBITRUM` / `RPC_URL_BASE` explicitly, or set `ALCHEMY_API_KEY` and let the Collector
+Either set `RPC_URL_ARBITRUM` / `RPC_URL_BASE` explicitly, or set `ALCHEMY_API_KEY` and let the DataSync
 derive `https://arb-mainnet.g.alchemy.com/v2/<key>` and `https://base-mainnet.g.alchemy.com/v2/<key>`. An
 explicit `RPC_URL_<CHAIN>` always wins.
 
-### 3.2 Watchlist (`appsettings.json` → `Collector:Watchlist`)
+### 3.2 Watchlist (`appsettings.json` → `DataSync:Watchlist`)
 
-The pools to snapshot and seed live in the `Collector:Watchlist` section. Each entry seeds the pool, its
+The pools to snapshot and seed live in the `DataSync:Watchlist` section. Each entry seeds the pool, its
 two assets, and is snapshotted every `pool-snapshot` run. Subgraph IDs and the position-manager address come
 from the DEX protocol registry (`DefaultDexProtocols`), not from here.
 
@@ -106,20 +106,20 @@ audit data, not a secret.
 Build from the **repo root** so the context has the props files and every referenced project:
 
 ```bash
-docker build -f src/FollowAlpha.LP.Collector/Dockerfile -t followalpha-lp-collector .
+docker build -f src/FollowAlpha.LP.DataSync/Dockerfile -t followalpha-lp-datasync .
 ```
 
 Run with the database on a named volume and the config mounted read-only:
 
 ```bash
-docker run -d --name followalpha-collector \
+docker run -d --name followalpha-datasync \
   --restart unless-stopped \
   --env-file .env \
   -v followalpha-lp-data:/app/data \
   -v "$(pwd)/config:/app/config:ro" \
-  -v "$(pwd)/src/FollowAlpha.LP.Collector/appsettings.json:/app/appsettings.json:ro" \
+  -v "$(pwd)/src/FollowAlpha.LP.DataSync/appsettings.json:/app/appsettings.json:ro" \
   -p 8080:8080 \
-  followalpha-lp-collector
+  followalpha-lp-datasync
 ```
 
 - `LP_DB_PATH` defaults to `/app/data/followalpha-lp.db` inside the image; the named volume
@@ -132,10 +132,10 @@ docker run -d --name followalpha-collector \
 
 ```yaml
 services:
-  collector:
+  datasync:
     build:
       context: .
-      dockerfile: src/FollowAlpha.LP.Collector/Dockerfile
+      dockerfile: src/FollowAlpha.LP.DataSync/Dockerfile
     restart: unless-stopped
     env_file: .env
     ports:
@@ -143,7 +143,7 @@ services:
     volumes:
       - followalpha-lp-data:/app/data
       - ./config:/app/config:ro
-      - ./src/FollowAlpha.LP.Collector/appsettings.json:/app/appsettings.json:ro
+      - ./src/FollowAlpha.LP.DataSync/appsettings.json:/app/appsettings.json:ro
 volumes:
   followalpha-lp-data:
 ```
@@ -153,21 +153,21 @@ volumes:
 ## 5. Deploy without Docker (systemd alternative)
 
 ```bash
-dotnet publish src/FollowAlpha.LP.Collector/FollowAlpha.LP.Collector.csproj -c Release -o /opt/followalpha-collector
+dotnet publish src/FollowAlpha.LP.DataSync/FollowAlpha.LP.DataSync.csproj -c Release -o /opt/followalpha-datasync
 ```
 
-`/etc/systemd/system/followalpha-collector.service`:
+`/etc/systemd/system/followalpha-datasync.service`:
 
 ```ini
 [Unit]
-Description=FollowAlpha.LP Collector
+Description=FollowAlpha.LP DataSync
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-WorkingDirectory=/opt/followalpha-collector
-ExecStart=/usr/bin/dotnet /opt/followalpha-collector/FollowAlpha.LP.Collector.dll
-EnvironmentFile=/opt/followalpha-collector/.env
+WorkingDirectory=/opt/followalpha-datasync
+ExecStart=/usr/bin/dotnet /opt/followalpha-datasync/FollowAlpha.LP.DataSync.dll
+EnvironmentFile=/opt/followalpha-datasync/.env
 Environment=LP_DB_PATH=/var/lib/followalpha/followalpha-lp.db
 Restart=always
 RestartSec=10
@@ -179,7 +179,7 @@ WantedBy=multi-user.target
 
 ```bash
 install -d -o followalpha /var/lib/followalpha          # durable DB location, owned by the service user
-systemctl daemon-reload && systemctl enable --now followalpha-collector
+systemctl daemon-reload && systemctl enable --now followalpha-datasync
 ```
 
 The DB path (`/var/lib/followalpha`) must be on durable, backed-up storage for the same reason as the Docker
@@ -193,7 +193,7 @@ volume.
    lands. A pool with no snapshot, or one older than `2 × PoolSnapshotFreshnessSeconds`, makes the endpoint
    return `503` with `status: "Degraded"` and per-pool `stale: true`. The body also reports the last run
    time of each job.
-2. **Logs** — `docker logs -f followalpha-collector` (or `journalctl -u followalpha-collector -f`). Expect a
+2. **Logs** — `docker logs -f followalpha-datasync` (or `journalctl -u followalpha-datasync -f`). Expect a
    startup "Seeded reference graph" line, then per-pool snapshot lines (`snapshot inserted, N tick rows`)
    and per-wallet sync lines (`N tokenIds, R events read, I inserted`).
 3. **Data accumulating on both chains** — confirm pool snapshots and tick rows are growing for each
@@ -219,7 +219,7 @@ sqlite3 /path/to/followalpha-lp.db \
   insert-if-absent, so it is safe on every start.
 - **Recovery after downtime.** On restart the startup runs re-sync events and prices (idempotent, so gaps
   close themselves). Tick-distribution gaps during downtime are permanent — minimize downtime.
-- **Schedules.** Tune `Collector:PoolSnapshotCron` / `Collector:WalletSyncCron` (Cronos 5-field cron, UTC)
+- **Schedules.** Tune `DataSync:PoolSnapshotCron` / `DataSync:WalletSyncCron` (Cronos 5-field cron, UTC)
   via config or env. `WalletSyncFromBlock` sets the lower bound for event scans (0 = from genesis).
 - **Secrets.** Never bake `.env` or keys into an image (`.dockerignore` excludes them). Rotate by updating
   `.env` and restarting.

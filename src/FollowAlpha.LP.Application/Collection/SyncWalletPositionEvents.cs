@@ -12,7 +12,7 @@ namespace FollowAlpha.LP.Application.Collection;
 public sealed record WalletSyncRequest(
     string WalletId, string WalletAddress, string ChainId, long FromBlock, long ToBlock, int ReorgBuffer = 0);
 
-/// <summary>Outcome of a wallet sync (for the Collector's structured per-job log, NFR O2).</summary>
+/// <summary>Outcome of a wallet sync (for the DataSync worker's structured per-job log, NFR O2).</summary>
 public sealed record WalletSyncOutcome(
     string WalletId,
     long FromBlock,
